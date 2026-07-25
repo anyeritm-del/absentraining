@@ -64,12 +64,12 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div className="print:hidden">
         <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Dashboard</h1>
         <p className="text-sm text-zinc-500">Ringkasan hari ini ({today})</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 print:hidden">
         <StatCard label="Department" value={departments.length} />
         <StatCard label="Anak Training Aktif" value={activeTrainees.length} />
         <StatCard label="Jadwal Hari Ini" value={todaySchedules.length} />
@@ -80,7 +80,7 @@ export default function DashboardPage() {
       <AbsenLinkCard />
 
       {todaySchedules.length === 0 && (
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-zinc-500 print:hidden">
           Belum ada jadwal training untuk hari ini. Buat jadwal baru di menu Jadwal.
         </p>
       )}
