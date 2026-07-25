@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Schedule } from "@/lib/repositories/schedules";
 import type { Department } from "@/lib/repositories/departments";
+import type { Trainee } from "@/lib/repositories/trainees";
+
+type ScheduleWithAssignments = Schedule & { trainee_ids: string[] };
 
 interface FormState {
   department_id: string;
@@ -13,6 +16,7 @@ interface FormState {
   lat: string;
   lng: string;
   radius_m: string;
+  trainee_ids: string[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -24,11 +28,13 @@ const EMPTY_FORM: FormState = {
   lat: "",
   lng: "",
   radius_m: "100",
+  trainee_ids: [],
 };
 
 export default function SchedulesClient() {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [schedules, setSchedules] = useState<ScheduleWithAssignments[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -38,16 +44,19 @@ export default function SchedulesClient() {
 
   const fetchData = useCallback(async () => {
     setLoadingList(true);
-    const [scheduleRes, deptRes] = await Promise.all([
+    const [scheduleRes, deptRes, traineeRes] = await Promise.all([
       fetch("/api/schedules"),
       fetch("/api/departments"),
+      fetch("/api/trainees"),
     ]);
-    const [scheduleData, deptData] = await Promise.all([
+    const [scheduleData, deptData, traineeData] = await Promise.all([
       scheduleRes.json(),
       deptRes.json(),
+      traineeRes.json(),
     ]);
     if (scheduleRes.ok) setSchedules(scheduleData.schedules);
     if (deptRes.ok) setDepartments(deptData.departments);
+    if (traineeRes.ok) setTrainees(traineeData.trainees);
     setLoadingList(false);
   }, []);
 
@@ -59,7 +68,17 @@ export default function SchedulesClient() {
   const departmentName = (id: string) =>
     departments.find((d) => d.id === id)?.name ?? "-";
 
-  function startEdit(schedule: Schedule) {
+  const traineesInDepartment = (departmentId: string) =>
+    trainees.filter((t) => t.department_id === departmentId);
+
+  function traineeNames(ids: string[]): string {
+    if (ids.length === 0) return "Belum ada";
+    return ids
+      .map((id) => trainees.find((t) => t.id === id)?.name ?? "?")
+      .join(", ");
+  }
+
+  function startEdit(schedule: ScheduleWithAssignments) {
     setEditingId(schedule.id);
     setForm({
       department_id: schedule.department_id,
@@ -70,6 +89,7 @@ export default function SchedulesClient() {
       lat: String(schedule.lat),
       lng: String(schedule.lng),
       radius_m: String(schedule.radius_m),
+      trainee_ids: schedule.trainee_ids,
     });
   }
 
@@ -77,6 +97,15 @@ export default function SchedulesClient() {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setError(null);
+  }
+
+  function toggleTrainee(id: string) {
+    setForm((f) => ({
+      ...f,
+      trainee_ids: f.trainee_ids.includes(id)
+        ? f.trainee_ids.filter((t) => t !== id)
+        : [...f.trainee_ids, id],
+    }));
   }
 
   function useMyLocation() {
@@ -120,6 +149,7 @@ export default function SchedulesClient() {
         lat: Number(form.lat),
         lng: Number(form.lng),
         radius_m: Number(form.radius_m),
+        trainee_ids: form.trainee_ids,
       };
       const res = await fetch(
         editingId ? `/api/schedules/${editingId}` : "/api/schedules",
@@ -150,6 +180,7 @@ export default function SchedulesClient() {
   }
 
   const sorted = [...schedules].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const formTrainees = traineesInDepartment(form.department_id);
 
   return (
     <div className="flex flex-col gap-6">
@@ -164,7 +195,9 @@ export default function SchedulesClient() {
           <select
             required
             value={form.department_id}
-            onChange={(e) => setForm({ ...form, department_id: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, department_id: e.target.value, trainee_ids: [] })
+            }
             className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
           >
             <option value="">Pilih...</option>
@@ -270,6 +303,45 @@ export default function SchedulesClient() {
           </div>
         </div>
 
+        <div className="lg:col-span-4">
+          <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Anak Training di Sesi Ini
+          </label>
+          {!form.department_id && (
+            <p className="text-sm text-zinc-400">Pilih department dulu.</p>
+          )}
+          {form.department_id && formTrainees.length === 0 && (
+            <p className="text-sm text-zinc-400">
+              Belum ada anak training di department ini.
+            </p>
+          )}
+          {formTrainees.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {formTrainees.map((t) => {
+                const checked = form.trainee_ids.includes(t.id);
+                return (
+                  <label
+                    key={t.id}
+                    className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm ${
+                      checked
+                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                        : "border-zinc-300 text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleTrainee(t.id)}
+                      className="hidden"
+                    />
+                    {t.name}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="flex items-end gap-2 lg:col-span-4">
           <button
             type="submit"
@@ -304,7 +376,7 @@ export default function SchedulesClient() {
               <th className="px-4 py-3 font-medium">Department</th>
               <th className="px-4 py-3 font-medium">Sesi</th>
               <th className="px-4 py-3 font-medium">Jam</th>
-              <th className="px-4 py-3 font-medium">Radius</th>
+              <th className="px-4 py-3 font-medium">Anak Training</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
@@ -324,7 +396,9 @@ export default function SchedulesClient() {
                 <td className="px-4 py-3 text-zinc-500">
                   {schedule.start_time}–{schedule.end_time}
                 </td>
-                <td className="px-4 py-3 text-zinc-500">{schedule.radius_m}m</td>
+                <td className="px-4 py-3 text-zinc-500">
+                  {traineeNames(schedule.trainee_ids)}
+                </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button
                     onClick={() => startEdit(schedule)}

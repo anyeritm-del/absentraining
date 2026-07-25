@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { assertDepartmentScope, requireAdminOrResponse } from "@/lib/session";
 import { deleteSchedule, getScheduleById, updateSchedule } from "@/lib/repositories/schedules";
+import { listTrainees } from "@/lib/repositories/trainees";
+import {
+  deleteAssignmentsForSchedule,
+  setAssignmentsForSchedule,
+} from "@/lib/repositories/scheduleAssignments";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +19,7 @@ const scheduleSchema = z.object({
   lat: z.number(),
   lng: z.number(),
   radius_m: z.number().positive(),
+  trainee_ids: z.array(z.string()).default([]),
 });
 
 export async function PATCH(
@@ -31,6 +37,7 @@ export async function PATCH(
       { status: 400 }
     );
   }
+  const { trainee_ids, ...scheduleData } = parsed.data;
 
   const existing = await getScheduleById(id);
   if (!existing) {
@@ -38,12 +45,27 @@ export async function PATCH(
   }
   const forbiddenExisting = assertDepartmentScope(session, existing.department_id);
   if (forbiddenExisting) return forbiddenExisting;
-  const forbiddenTarget = assertDepartmentScope(session, parsed.data.department_id);
+  const forbiddenTarget = assertDepartmentScope(session, scheduleData.department_id);
   if (forbiddenTarget) return forbiddenTarget;
 
+  const departmentTrainees = await listTrainees();
+  const validTraineeIds = new Set(
+    departmentTrainees
+      .filter((t) => t.department_id === scheduleData.department_id)
+      .map((t) => t.id)
+  );
+  const invalidId = trainee_ids.find((tid) => !validTraineeIds.has(tid));
+  if (invalidId) {
+    return NextResponse.json(
+      { error: "Salah satu anak training tidak berada di department ini" },
+      { status: 400 }
+    );
+  }
+
   try {
-    const schedule = await updateSchedule(id, parsed.data);
-    return NextResponse.json({ schedule });
+    const schedule = await updateSchedule(id, scheduleData);
+    await setAssignmentsForSchedule(id, trainee_ids);
+    return NextResponse.json({ schedule: { ...schedule, trainee_ids } });
   } catch {
     return NextResponse.json({ error: "Jadwal tidak ditemukan" }, { status: 404 });
   }
@@ -66,6 +88,7 @@ export async function DELETE(
 
   try {
     await deleteSchedule(id);
+    await deleteAssignmentsForSchedule(id);
     return NextResponse.json({ message: "Jadwal dihapus" });
   } catch {
     return NextResponse.json({ error: "Jadwal tidak ditemukan" }, { status: 404 });

@@ -12,6 +12,7 @@ import { minutesSinceMidnight, nowTimeInJakarta } from "@/lib/date";
 import { uploadPhoto } from "@/lib/googleDrive";
 import { getJoinedAttendance } from "@/lib/attendanceView";
 import { verifyGoogleIdToken } from "@/lib/googleIdToken";
+import { isTraineeAssignedToSchedule } from "@/lib/repositories/scheduleAssignments";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +97,14 @@ export async function POST(req: Request) {
   const schedule = await getScheduleById(schedule_id);
   if (!schedule || schedule.department_id !== trainee.department_id) {
     return NextResponse.json({ error: "Jadwal tidak ditemukan" }, { status: 404 });
+  }
+
+  const isAssigned = await isTraineeAssignedToSchedule(trainee.id, schedule.id);
+  if (!isAssigned) {
+    return NextResponse.json(
+      { error: "Anda tidak terdaftar di sesi jadwal ini" },
+      { status: 403 }
+    );
   }
 
   const existing = await getAttendanceForTraineeSchedule(trainee.id, schedule.id);

@@ -5,6 +5,7 @@ import { getTraineeByEmail } from "@/lib/repositories/trainees";
 import { getDepartmentById } from "@/lib/repositories/departments";
 import { getSchedulesForDepartmentOnDate } from "@/lib/repositories/schedules";
 import { getAttendanceForTraineeSchedule } from "@/lib/repositories/attendance";
+import { getScheduleIdsForTrainee } from "@/lib/repositories/scheduleAssignments";
 import { todayInJakarta } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
@@ -32,10 +33,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const [department, schedules] = await Promise.all([
+  const [department, departmentSchedules, assignedScheduleIds] = await Promise.all([
     getDepartmentById(trainee.department_id),
     getSchedulesForDepartmentOnDate(trainee.department_id, todayInJakarta()),
+    getScheduleIdsForTrainee(trainee.id),
   ]);
+  const schedules = departmentSchedules.filter((s) => assignedScheduleIds.has(s.id));
 
   const schedulesWithStatus = await Promise.all(
     schedules.map(async (schedule) => {
