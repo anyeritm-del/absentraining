@@ -5,6 +5,7 @@ import { ensureTraineesHeaders } from "@/lib/repositories/trainees";
 import { ensureSchedulesHeaders } from "@/lib/repositories/schedules";
 import { ensureAttendanceHeaders } from "@/lib/repositories/attendance";
 import { ensureScheduleAssignmentsHeaders } from "@/lib/repositories/scheduleAssignments";
+import { ensureLocationsHeaders } from "@/lib/repositories/locations";
 import {
   ensureAdminsHeaders,
   createAdmin,
@@ -26,6 +27,7 @@ export async function POST() {
     ensureAttendanceHeaders(),
     ensureAdminsHeaders(),
     ensureScheduleAssignmentsHeaders(),
+    ensureLocationsHeaders(),
   ]);
 
   const existingAdmins = await listAdmins();

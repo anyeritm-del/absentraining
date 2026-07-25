@@ -1,33 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import type { Schedule } from "@/lib/repositories/schedules";
 import type { Department } from "@/lib/repositories/departments";
 import type { Trainee } from "@/lib/repositories/trainees";
+import type { Location } from "@/lib/repositories/locations";
 
 type ScheduleWithAssignments = Schedule & { trainee_ids: string[] };
 
 interface FormState {
   department_id: string;
-  date: string;
+  start_date: string;
+  end_date: string;
   session_name: string;
   start_time: string;
   end_time: string;
-  lat: string;
-  lng: string;
-  radius_m: string;
+  location_id: string;
   trainee_ids: string[];
 }
 
 const EMPTY_FORM: FormState = {
   department_id: "",
-  date: "",
+  start_date: "",
+  end_date: "",
   session_name: "",
   start_time: "",
   end_time: "",
-  lat: "",
-  lng: "",
-  radius_m: "100",
+  location_id: "",
   trainee_ids: [],
 };
 
@@ -35,28 +35,31 @@ export default function SchedulesClient() {
   const [schedules, setSchedules] = useState<ScheduleWithAssignments[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [loadingList, setLoadingList] = useState(true);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [locating, setLocating] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoadingList(true);
-    const [scheduleRes, deptRes, traineeRes] = await Promise.all([
+    const [scheduleRes, deptRes, traineeRes, locationRes] = await Promise.all([
       fetch("/api/schedules"),
       fetch("/api/departments"),
       fetch("/api/trainees"),
+      fetch("/api/locations"),
     ]);
-    const [scheduleData, deptData, traineeData] = await Promise.all([
+    const [scheduleData, deptData, traineeData, locationData] = await Promise.all([
       scheduleRes.json(),
       deptRes.json(),
       traineeRes.json(),
+      locationRes.json(),
     ]);
     if (scheduleRes.ok) setSchedules(scheduleData.schedules);
     if (deptRes.ok) setDepartments(deptData.departments);
     if (traineeRes.ok) setTrainees(traineeData.trainees);
+    if (locationRes.ok) setLocations(locationData.locations);
     setLoadingList(false);
   }, []);
 
@@ -78,17 +81,23 @@ export default function SchedulesClient() {
       .join(", ");
   }
 
+  function findMatchingLocationId(schedule: Schedule): string {
+    const match = locations.find(
+      (l) => l.lat === schedule.lat && l.lng === schedule.lng && l.radius_m === schedule.radius_m
+    );
+    return match?.id ?? "";
+  }
+
   function startEdit(schedule: ScheduleWithAssignments) {
     setEditingId(schedule.id);
     setForm({
       department_id: schedule.department_id,
-      date: schedule.date,
+      start_date: schedule.date,
+      end_date: schedule.date,
       session_name: schedule.session_name,
       start_time: schedule.start_time,
       end_time: schedule.end_time,
-      lat: String(schedule.lat),
-      lng: String(schedule.lng),
-      radius_m: String(schedule.radius_m),
+      location_id: findMatchingLocationId(schedule),
       trainee_ids: schedule.trainee_ids,
     });
   }
@@ -108,49 +117,34 @@ export default function SchedulesClient() {
     }));
   }
 
-  function useMyLocation() {
-    if (!navigator.geolocation) {
-      setError("Geolocation tidak didukung browser ini");
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setForm((f) => ({
-          ...f,
-          lat: String(pos.coords.latitude),
-          lng: String(pos.coords.longitude),
-        }));
-        setLocating(false);
-      },
-      () => {
-        setError("Gagal mengambil lokasi. Izinkan akses lokasi di browser.");
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.department_id) {
       setError("Pilih department terlebih dahulu");
       return;
     }
+    const location = locations.find((l) => l.id === form.location_id);
+    if (!location) {
+      setError("Pilih lokasi training terlebih dahulu");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const payload = {
+      const basePayload = {
         department_id: form.department_id,
-        date: form.date,
         session_name: form.session_name,
         start_time: form.start_time,
         end_time: form.end_time,
-        lat: Number(form.lat),
-        lng: Number(form.lng),
-        radius_m: Number(form.radius_m),
+        lat: location.lat,
+        lng: location.lng,
+        radius_m: location.radius_m,
         trainee_ids: form.trainee_ids,
       };
+      const payload = editingId
+        ? { ...basePayload, date: form.start_date }
+        : { ...basePayload, start_date: form.start_date, end_date: form.end_date || form.start_date };
+
       const res = await fetch(
         editingId ? `/api/schedules/${editingId}` : "/api/schedules",
         {
@@ -210,16 +204,34 @@ export default function SchedulesClient() {
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Tanggal
+            {editingId ? "Tanggal" : "Tanggal Mulai"}
           </label>
           <input
             type="date"
             required
-            value={form.date}
-            onChange={(e) => setForm({ ...form, date: e.target.value })}
+            value={form.start_date}
+            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
             className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
           />
         </div>
+        {!editingId && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Tanggal Selesai
+            </label>
+            <input
+              type="date"
+              placeholder="Sama dengan tanggal mulai jika kosong"
+              value={form.end_date}
+              min={form.start_date || undefined}
+              onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
+            />
+            <p className="mt-1 text-xs text-zinc-400">
+              Kosongkan jika cuma 1 hari. Isi untuk buat jadwal yang sama tiap hari dalam rentang ini.
+            </p>
+          </div>
+        )}
         <div>
           <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Nama Sesi
@@ -260,47 +272,32 @@ export default function SchedulesClient() {
         </div>
 
         <div className="lg:col-span-4">
-          <div className="mb-2 flex items-center justify-between">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Titik Lokasi Training (untuk validasi radius)
-            </label>
-            <button
-              type="button"
-              onClick={useMyLocation}
-              disabled={locating}
-              className="rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-600 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Lokasi Training
+          </label>
+          {locations.length === 0 ? (
+            <p className="text-sm text-zinc-400">
+              Belum ada lokasi tersimpan.{" "}
+              <Link href="/admin/locations" className="underline">
+                Buat lokasi dulu di menu Lokasi
+              </Link>
+              .
+            </p>
+          ) : (
+            <select
+              required
+              value={form.location_id}
+              onChange={(e) => setForm({ ...form, location_id: e.target.value })}
+              className="w-full max-w-sm rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
             >
-              {locating ? "Mengambil lokasi..." : "Gunakan lokasi saya sekarang"}
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <input
-              required
-              type="number"
-              step="any"
-              placeholder="Latitude"
-              value={form.lat}
-              onChange={(e) => setForm({ ...form, lat: e.target.value })}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
-            />
-            <input
-              required
-              type="number"
-              step="any"
-              placeholder="Longitude"
-              value={form.lng}
-              onChange={(e) => setForm({ ...form, lng: e.target.value })}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
-            />
-            <input
-              required
-              type="number"
-              placeholder="Radius (meter)"
-              value={form.radius_m}
-              onChange={(e) => setForm({ ...form, radius_m: e.target.value })}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
-            />
-          </div>
+              <option value="">Pilih lokasi...</option>
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name} (radius {l.radius_m}m)
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="lg:col-span-4">

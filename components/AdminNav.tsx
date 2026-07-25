@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/admin", label: "Dashboard", fullAccessOnly: false },
   { href: "/admin/departments", label: "Department", fullAccessOnly: true },
+  { href: "/admin/locations", label: "Lokasi", fullAccessOnly: true },
   { href: "/admin/trainees", label: "Anak Training", fullAccessOnly: false },
   { href: "/admin/schedules", label: "Jadwal", fullAccessOnly: false },
   { href: "/admin/attendance", label: "Absensi", fullAccessOnly: false },

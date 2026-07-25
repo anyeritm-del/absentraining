@@ -7,12 +7,16 @@ import {
   listScheduleAssignments,
   setAssignmentsForSchedule,
 } from "@/lib/repositories/scheduleAssignments";
+import { enumerateDates } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 
-const scheduleSchema = z.object({
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+const createSchema = z.object({
   department_id: z.string().min(1),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal harus YYYY-MM-DD"),
+  start_date: z.string().regex(DATE_REGEX, "Format tanggal harus YYYY-MM-DD"),
+  end_date: z.string().regex(DATE_REGEX, "Format tanggal harus YYYY-MM-DD"),
   session_name: z.string().min(1),
   start_time: z.string().regex(/^\d{2}:\d{2}$/, "Format jam harus HH:mm"),
   end_time: z.string().regex(/^\d{2}:\d{2}$/, "Format jam harus HH:mm"),
@@ -49,17 +53,25 @@ export async function POST(req: Request) {
   const { session, response } = await requireAdminOrResponse();
   if (response) return response;
 
-  const parsed = scheduleSchema.safeParse(await req.json().catch(() => null));
+  const parsed = createSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Data jadwal tidak valid" },
       { status: 400 }
     );
   }
-  const { trainee_ids, ...scheduleData } = parsed.data;
+  const { trainee_ids, start_date, end_date, ...scheduleData } = parsed.data;
 
   const forbidden = assertDepartmentScope(session, scheduleData.department_id);
   if (forbidden) return forbidden;
+
+  const dates = enumerateDates(start_date, end_date);
+  if (dates.length === 0) {
+    return NextResponse.json(
+      { error: "Rentang tanggal tidak valid (tanggal selesai harus ≥ tanggal mulai)" },
+      { status: 400 }
+    );
+  }
 
   const departmentTrainees = await listTrainees();
   const validTraineeIds = new Set(
@@ -75,7 +87,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const schedule = await createSchedule(scheduleData);
-  await setAssignmentsForSchedule(schedule.id, trainee_ids);
-  return NextResponse.json({ schedule: { ...schedule, trainee_ids } }, { status: 201 });
+  const createdSchedules = [];
+  for (const date of dates) {
+    const schedule = await createSchedule({ ...scheduleData, date });
+    await setAssignmentsForSchedule(schedule.id, trainee_ids);
+    createdSchedules.push({ ...schedule, trainee_ids });
+  }
+
+  return NextResponse.json({ schedules: createdSchedules }, { status: 201 });
 }
