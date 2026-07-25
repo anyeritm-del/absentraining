@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import { appendRow, ensureHeaders, getRows } from "../googleSheetsClient";
+import { appendRow, deleteRowById, ensureHeaders, getRows } from "../googleSheetsClient";
 
 export const ADMINS_TAB = "Admins";
 export const ADMINS_HEADERS = ["id", "email", "password_hash", "created_at"];
@@ -25,6 +25,15 @@ export async function getAdminByEmail(email: string): Promise<Admin | null> {
   return (
     list.find((a) => a.email.toLowerCase() === email.toLowerCase()) ?? null
   );
+}
+
+export async function getAdminById(id: string): Promise<Admin | null> {
+  const list = await listAdmins();
+  return list.find((a) => a.id === id) ?? null;
+}
+
+export async function deleteAdmin(id: string): Promise<void> {
+  await deleteRowById(ADMINS_TAB, "id", id);
 }
 
 export async function createAdmin(data: {

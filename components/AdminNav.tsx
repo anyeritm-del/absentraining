@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/admin/trainees", label: "Anak Training" },
   { href: "/admin/schedules", label: "Jadwal" },
   { href: "/admin/attendance", label: "Absensi" },
+  { href: "/admin/admins", label: "Kelola Admin" },
 ];
 
 export default function AdminNav() {
