@@ -25,6 +25,7 @@ export default function AdminsClient() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AdminRole>("full_access");
@@ -59,11 +60,24 @@ export default function AdminsClient() {
   }, [fetchData]);
 
   function resetForm() {
+    setEditingId(null);
     setEmail("");
     setPassword("");
     setRole("full_access");
     setDepartmentId("");
+    setError(null);
   }
+
+  function startEdit(admin: AdminRow) {
+    setEditingId(admin.id);
+    setEmail(admin.email);
+    setPassword("");
+    setRole(admin.role);
+    setDepartmentId(admin.department_id);
+    setError(null);
+  }
+
+  const isEditingSelf = editingId !== null && editingId === currentAdminId;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,17 +85,24 @@ export default function AdminsClient() {
       setError("Pilih department untuk admin department");
       return;
     }
+    if (!editingId && !password) {
+      setError("Password wajib diisi");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admins", {
-        method: "POST",
+      const payload: Record<string, unknown> = { email, role, department_id: departmentId };
+      if (password) payload.password = password;
+
+      const res = await fetch(editingId ? `/api/admins/${editingId}` : "/api/admins", {
+        method: editingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, role, department_id: departmentId }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Gagal menambahkan admin");
+        setError(data.error ?? "Gagal menyimpan admin");
         return;
       }
       resetForm();
@@ -128,8 +149,9 @@ export default function AdminsClient() {
           </label>
           <input
             type="password"
-            required
+            required={!editingId}
             minLength={8}
+            placeholder={editingId ? "Kosongkan jika tidak diubah" : ""}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
@@ -141,12 +163,16 @@ export default function AdminsClient() {
           </label>
           <select
             value={role}
+            disabled={isEditingSelf}
             onChange={(e) => setRole(e.target.value as AdminRole)}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
+            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800"
           >
             <option value="full_access">Full Access</option>
             <option value="department_admin">Admin Department</option>
           </select>
+          {isEditingSelf && (
+            <p className="mt-1 text-xs text-zinc-400">Tidak bisa ubah role akun sendiri.</p>
+          )}
         </div>
         {role === "department_admin" && (
           <div>
@@ -155,8 +181,9 @@ export default function AdminsClient() {
             </label>
             <select
               value={departmentId}
+              disabled={isEditingSelf}
               onChange={(e) => setDepartmentId(e.target.value)}
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800"
             >
               <option value="">Pilih...</option>
               {departments.map((d) => (
@@ -167,14 +194,23 @@ export default function AdminsClient() {
             </select>
           </div>
         )}
-        <div className="flex items-end">
+        <div className="flex items-end gap-2">
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
           >
-            Tambah Admin
+            {editingId ? "Simpan" : "Tambah Admin"}
           </button>
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="rounded-md border border-zinc-300 px-4 py-2 text-sm dark:border-zinc-700"
+            >
+              Batal
+            </button>
+          )}
         </div>
       </form>
 
@@ -221,7 +257,13 @@ export default function AdminsClient() {
                   {admin.role === "department_admin" ? departmentName(admin.department_id) : "-"}
                 </td>
                 <td className="px-4 py-3 text-zinc-500">{formatDate(admin.created_at)}</td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <button
+                    onClick={() => startEdit(admin)}
+                    className="mr-3 text-zinc-600 hover:underline dark:text-zinc-300"
+                  >
+                    Edit
+                  </button>
                   {admin.id !== currentAdminId && (
                     <button
                       onClick={() => handleDelete(admin.id)}

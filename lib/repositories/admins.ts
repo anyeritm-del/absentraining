@@ -1,5 +1,12 @@
 import { nanoid } from "nanoid";
-import { appendRow, deleteRowById, ensureHeaders, getRows, SheetRow } from "../googleSheetsClient";
+import {
+  appendRow,
+  deleteRowById,
+  ensureHeaders,
+  getRows,
+  SheetRow,
+  updateRowById,
+} from "../googleSheetsClient";
 
 export const ADMINS_TAB = "Admins";
 export const ADMINS_HEADERS = [
@@ -62,6 +69,34 @@ export async function getAdminById(id: string): Promise<Admin | null> {
 
 export async function deleteAdmin(id: string): Promise<void> {
   await deleteRowById(ADMINS_TAB, "id", id);
+}
+
+export async function updateAdmin(
+  id: string,
+  data: {
+    email: string;
+    role: AdminRole;
+    department_id: string;
+    password_hash?: string;
+  }
+): Promise<Admin> {
+  const existing = await getAdminById(id);
+  if (!existing) throw new Error("Admin not found");
+  const updated: Admin = {
+    ...existing,
+    email: data.email,
+    role: data.role,
+    department_id: data.department_id,
+    password_hash: data.password_hash ?? existing.password_hash,
+  };
+  await updateRowById(
+    ADMINS_TAB,
+    ADMINS_HEADERS,
+    "id",
+    id,
+    updated as unknown as Record<string, string>
+  );
+  return updated;
 }
 
 export async function createAdmin(data: {
