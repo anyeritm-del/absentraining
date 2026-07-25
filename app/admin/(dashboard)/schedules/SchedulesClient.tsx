@@ -6,6 +6,7 @@ import type { Schedule } from "@/lib/repositories/schedules";
 import type { Department } from "@/lib/repositories/departments";
 import type { Trainee } from "@/lib/repositories/trainees";
 import type { Location } from "@/lib/repositories/locations";
+import SchedulesCalendar from "./SchedulesCalendar";
 
 type ScheduleWithAssignments = Schedule & { trainee_ids: string[] };
 
@@ -41,6 +42,7 @@ export default function SchedulesClient() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoadingList(true);
@@ -173,7 +175,9 @@ export default function SchedulesClient() {
     if (res.ok) await fetchData();
   }
 
-  const sorted = [...schedules].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const sorted = [...schedules]
+    .filter((s) => !selectedDate || s.date === selectedDate)
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
   const formTrainees = traineesInDepartment(form.department_id);
 
   return (
@@ -365,6 +369,12 @@ export default function SchedulesClient() {
         </p>
       )}
 
+      <SchedulesCalendar
+        schedules={schedules}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+      />
+
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <table className="w-full text-sm">
           <thead>
@@ -415,7 +425,7 @@ export default function SchedulesClient() {
             {!loadingList && sorted.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-zinc-400">
-                  Belum ada jadwal.
+                  {selectedDate ? `Tidak ada jadwal di ${selectedDate}.` : "Belum ada jadwal."}
                 </td>
               </tr>
             )}
