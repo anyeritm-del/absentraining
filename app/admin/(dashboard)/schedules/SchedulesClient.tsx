@@ -333,7 +333,7 @@ export default function SchedulesClient() {
                     key={t.id}
                     className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm ${
                       checked
-                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                        ? "border-brand bg-brand text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-brand"
                         : "border-zinc-300 text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
                     }`}
                   >
@@ -355,7 +355,7 @@ export default function SchedulesClient() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+            className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-50 dark:bg-zinc-50 dark:text-brand"
           >
             {editingId ? "Simpan" : "Tambah Jadwal"}
           </button>

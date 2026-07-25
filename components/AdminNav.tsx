@@ -40,7 +40,7 @@ export default function AdminNav() {
             href={link.href}
             className={`rounded-md px-3 py-1.5 text-sm font-medium ${
               active
-                ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                ? "bg-brand text-white dark:bg-zinc-50 dark:text-brand"
                 : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
             }`}
           >

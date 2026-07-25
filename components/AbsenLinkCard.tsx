@@ -43,14 +43,22 @@ export default function AbsenLinkCard() {
       </div>
 
       {/* Print-only: full A4 poster, hidden on screen */}
-      <div className="hidden print:fixed print:inset-0 print:flex print:flex-col print:items-center print:justify-center print:gap-10 print:bg-white">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-zinc-400">
-          Absensi Training
-        </p>
-        <h1 className="text-5xl font-bold text-black">Scan untuk Absen</h1>
+      <div className="hidden print:fixed print:inset-0 print:flex print:flex-col print:items-center print:justify-center print:gap-8 print:bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Aston Anyer Beach Hotel" className="h-28 w-28 object-contain" />
+        <div className="text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-brand-muted">
+            Absensi Training
+          </p>
+          <h1 className="mt-1 text-5xl font-bold text-brand">Scan untuk Absen</h1>
+        </div>
         {qrDataUrl && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={qrDataUrl} alt="QR link absen" className="h-[380px] w-[380px]" />
+          <img
+            src={qrDataUrl}
+            alt="QR link absen"
+            className="h-[340px] w-[340px] border-8 border-brand p-2"
+          />
         )}
         <ol className="max-w-sm list-decimal space-y-2 text-lg text-black">
           <li>Scan QR di atas dengan kamera HP</li>
@@ -58,6 +66,7 @@ export default function AbsenLinkCard() {
           <li>Ambil foto & izinkan akses lokasi untuk absen</li>
         </ol>
         <p className="text-base text-zinc-500">{url}</p>
+        <div className="absolute inset-x-0 bottom-0 h-6 bg-brand" />
       </div>
     </>
   );

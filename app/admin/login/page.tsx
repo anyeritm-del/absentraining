@@ -40,6 +40,9 @@ export default function AdminLoginPage() {
         onSubmit={handleSubmit}
         className="w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Aston Anyer Beach Hotel" className="mb-4 h-16 w-16 object-contain" />
+
         <h1 className="mb-1 text-xl font-semibold text-zinc-900 dark:text-zinc-50">
           Admin Absensi Training
         </h1>
@@ -78,7 +81,7 @@ export default function AdminLoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-50 dark:bg-zinc-50 dark:text-brand"
         >
           {loading ? "Memproses..." : "Masuk"}
         </button>

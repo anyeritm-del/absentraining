@@ -10,6 +10,9 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Aston Anyer Beach Hotel brand colors, sampled from public/logo.png */
+  --color-brand: #00205b;
+  --color-brand-muted: #9d9d9d;
 }
 
 @media (prefers-color-scheme: dark) {

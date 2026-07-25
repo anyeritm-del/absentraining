@@ -104,7 +104,7 @@ export default function SchedulesCalendar({
               onClick={() => onSelectDate(isSelected ? null : key)}
               className={`flex min-h-[3.5rem] flex-col items-center gap-0.5 rounded-md border p-1 text-sm ${
                 isSelected
-                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                  ? "border-brand bg-brand text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-brand"
                   : isToday
                     ? "border-zinc-400 bg-zinc-50 text-zinc-900 dark:border-zinc-500 dark:bg-zinc-800 dark:text-zinc-50"
                     : "border-transparent text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"

@@ -149,6 +149,8 @@ export default function AbsenClient() {
   if (!data) {
     return (
       <div className="flex flex-col items-center gap-4 text-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Aston Anyer Beach Hotel" className="h-16 w-16 object-contain" />
         <div>
           <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
             Absen Training
@@ -224,7 +226,7 @@ export default function AbsenClient() {
                 {!clockedInAt && (
                   <button
                     onClick={() => startAction(schedule.id, "clock_in")}
-                    className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-50 dark:text-zinc-900"
+                    className="w-full rounded-md bg-brand px-4 py-2 text-sm font-medium text-white dark:bg-zinc-50 dark:text-brand"
                   >
                     Absen Masuk
                   </button>
@@ -232,7 +234,7 @@ export default function AbsenClient() {
                 {clockedInAt && !clockedOutAt && (
                   <button
                     onClick={() => startAction(schedule.id, "clock_out")}
-                    className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-50 dark:text-zinc-900"
+                    className="w-full rounded-md bg-brand px-4 py-2 text-sm font-medium text-white dark:bg-zinc-50 dark:text-brand"
                   >
                     Absen Pulang
                   </button>
@@ -275,7 +277,7 @@ export default function AbsenClient() {
                       <button
                         onClick={submitAttendance}
                         disabled={submitting}
-                        className="flex-1 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+                        className="flex-1 rounded-md bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-brand"
                       >
                         {submitting ? "Mengirim..." : "Kirim Absen"}
                       </button>

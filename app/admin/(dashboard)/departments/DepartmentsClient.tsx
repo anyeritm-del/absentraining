@@ -104,7 +104,7 @@ export default function DepartmentsClient() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+            className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-50 dark:bg-zinc-50 dark:text-brand"
           >
             {editingId ? "Simpan" : "Tambah"}
           </button>

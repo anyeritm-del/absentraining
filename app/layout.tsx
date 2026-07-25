@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Absensi Anak Training",
+  title: "Absensi Training — Aston Anyer Beach Hotel",
   description: "Aplikasi absensi anak training dengan foto dan lokasi",
+  icons: { icon: "/logo.png" },
 };
 
 export default function RootLayout({

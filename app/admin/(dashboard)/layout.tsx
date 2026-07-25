@@ -15,9 +15,15 @@ export default function DashboardLayout({
       <header className="border-b border-zinc-200 bg-white print:hidden dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex flex-wrap items-center gap-4">
-            <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              Absensi Training
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="rounded-md bg-white p-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="Aston Anyer Beach Hotel" className="h-7 w-7 object-contain" />
+              </div>
+              <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                Absensi Training
+              </span>
+            </div>
             <AdminNav />
           </div>
           <LogoutButton />
