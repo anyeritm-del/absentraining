@@ -66,6 +66,7 @@ export default function ReportsClient() {
       "Total Sesi",
       "Hadir",
       "Terlambat",
+      "Izin",
       "Tidak Hadir",
       "Persentase Kehadiran",
     ];
@@ -75,6 +76,7 @@ export default function ReportsClient() {
       s.total_sessions,
       s.present,
       s.late,
+      s.excused,
       s.absent,
       `${s.attendance_rate}%`,
     ]);
@@ -95,10 +97,12 @@ export default function ReportsClient() {
       total_sessions: acc.total_sessions + s.total_sessions,
       present: acc.present + s.present,
       late: acc.late + s.late,
+      excused: acc.excused + s.excused,
       absent: acc.absent + s.absent,
     }),
-    { total_sessions: 0, present: 0, late: 0, absent: 0 }
+    { total_sessions: 0, present: 0, late: 0, excused: 0, absent: 0 }
   );
+  const totalRequired = totals.total_sessions - totals.excused;
 
   return (
     <div className="flex flex-col gap-4">
@@ -171,6 +175,7 @@ export default function ReportsClient() {
               <th className="px-4 py-3 font-medium">Total Sesi</th>
               <th className="px-4 py-3 font-medium">Hadir</th>
               <th className="px-4 py-3 font-medium">Terlambat</th>
+              <th className="px-4 py-3 font-medium">Izin</th>
               <th className="px-4 py-3 font-medium">Tidak Hadir</th>
               <th className="px-4 py-3 font-medium">Kehadiran</th>
             </tr>
@@ -194,6 +199,15 @@ export default function ReportsClient() {
                   )}
                 </td>
                 <td className="px-4 py-3">
+                  {s.excused > 0 ? (
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                      {s.excused}
+                    </span>
+                  ) : (
+                    <span className="text-zinc-400">0</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
                   {s.absent > 0 ? (
                     <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-950 dark:text-red-400">
                       {s.absent}
@@ -209,14 +223,14 @@ export default function ReportsClient() {
             ))}
             {!loading && summaries.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">
                   Tidak ada data pada periode ini.
                 </td>
               </tr>
             )}
             {loading && (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={8} className="px-4 py-6 text-center text-zinc-400">
                   Memuat...
                 </td>
               </tr>
@@ -231,11 +245,12 @@ export default function ReportsClient() {
                 <td className="px-4 py-3">{totals.total_sessions}</td>
                 <td className="px-4 py-3">{totals.present}</td>
                 <td className="px-4 py-3">{totals.late}</td>
+                <td className="px-4 py-3">{totals.excused}</td>
                 <td className="px-4 py-3">{totals.absent}</td>
                 <td className="px-4 py-3">
-                  {totals.total_sessions === 0
+                  {totalRequired === 0
                     ? "-"
-                    : `${Math.round((totals.present / totals.total_sessions) * 100)}%`}
+                    : `${Math.round((totals.present / totalRequired) * 100)}%`}
                 </td>
               </tr>
             </tfoot>

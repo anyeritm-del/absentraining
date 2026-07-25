@@ -4,6 +4,7 @@ import {
   deleteRowById,
   ensureHeaders,
   getRows,
+  SheetRow,
 } from "../googleSheetsClient";
 
 export const SCHEDULE_ASSIGNMENTS_TAB = "ScheduleAssignments";
@@ -12,13 +13,38 @@ export const SCHEDULE_ASSIGNMENTS_HEADERS = [
   "schedule_id",
   "trainee_id",
   "created_at",
+  "status",
 ];
+
+export type AssignmentStatus = "assigned" | "excused";
 
 export interface ScheduleAssignment {
   id: string;
   schedule_id: string;
   trainee_id: string;
   created_at: string;
+  status: AssignmentStatus;
+}
+
+export interface TraineeAssignmentInput {
+  trainee_id: string;
+  status: AssignmentStatus;
+}
+
+// Assignments created before "izin" existed have no status cell — treat them
+// as a normal (non-excused) assignment rather than losing the data.
+function normalizeStatus(status: string): AssignmentStatus {
+  return status === "excused" ? "excused" : "assigned";
+}
+
+function parseAssignment(row: SheetRow): ScheduleAssignment {
+  return {
+    id: row.id,
+    schedule_id: row.schedule_id,
+    trainee_id: row.trainee_id,
+    created_at: row.created_at,
+    status: normalizeStatus(row.status),
+  };
 }
 
 export async function ensureScheduleAssignmentsHeaders() {
@@ -27,12 +53,14 @@ export async function ensureScheduleAssignmentsHeaders() {
 
 export async function listScheduleAssignments(): Promise<ScheduleAssignment[]> {
   const rows = await getRows(SCHEDULE_ASSIGNMENTS_TAB);
-  return rows as unknown as ScheduleAssignment[];
+  return rows.map(parseAssignment);
 }
 
-export async function getTraineeIdsForSchedule(scheduleId: string): Promise<string[]> {
+export async function getAssignmentsForSchedule(
+  scheduleId: string
+): Promise<ScheduleAssignment[]> {
   const list = await listScheduleAssignments();
-  return list.filter((a) => a.schedule_id === scheduleId).map((a) => a.trainee_id);
+  return list.filter((a) => a.schedule_id === scheduleId);
 }
 
 export async function getScheduleIdsForTrainee(traineeId: string): Promise<Set<string>> {
@@ -40,24 +68,42 @@ export async function getScheduleIdsForTrainee(traineeId: string): Promise<Set<s
   return new Set(list.filter((a) => a.trainee_id === traineeId).map((a) => a.schedule_id));
 }
 
+export async function getAssignmentsForTrainee(
+  traineeId: string
+): Promise<ScheduleAssignment[]> {
+  const list = await listScheduleAssignments();
+  return list.filter((a) => a.trainee_id === traineeId);
+}
+
+export async function getAssignmentForTraineeSchedule(
+  traineeId: string,
+  scheduleId: string
+): Promise<ScheduleAssignment | null> {
+  const list = await listScheduleAssignments();
+  return (
+    list.find((a) => a.trainee_id === traineeId && a.schedule_id === scheduleId) ?? null
+  );
+}
+
 export async function isTraineeAssignedToSchedule(
   traineeId: string,
   scheduleId: string
 ): Promise<boolean> {
-  const list = await listScheduleAssignments();
-  return list.some((a) => a.trainee_id === traineeId && a.schedule_id === scheduleId);
+  const assignment = await getAssignmentForTraineeSchedule(traineeId, scheduleId);
+  return assignment !== null;
 }
 
 export async function setAssignmentsForSchedule(
   scheduleId: string,
-  traineeIds: string[]
+  trainees: TraineeAssignmentInput[]
 ): Promise<void> {
   await deleteAssignmentsForSchedule(scheduleId);
-  for (const traineeId of traineeIds) {
+  for (const { trainee_id, status } of trainees) {
     const assignment: ScheduleAssignment = {
       id: nanoid(10),
       schedule_id: scheduleId,
-      trainee_id: traineeId,
+      trainee_id,
+      status,
       created_at: new Date().toISOString(),
     };
     await appendRow(

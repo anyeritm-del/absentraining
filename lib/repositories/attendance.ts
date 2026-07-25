@@ -76,6 +76,11 @@ export async function getAttendanceForTraineeSchedule(
   );
 }
 
+export async function getAttendanceForTrainee(traineeId: string): Promise<AttendanceRecord[]> {
+  const list = await listAttendance();
+  return list.filter((a) => a.trainee_id === traineeId);
+}
+
 export async function createAttendance(data: {
   trainee_id: string;
   schedule_id: string;

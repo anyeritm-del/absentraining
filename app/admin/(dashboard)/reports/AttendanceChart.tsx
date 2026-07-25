@@ -25,6 +25,7 @@ export default function AttendanceChart({
         <div className="flex gap-4">
           <LegendItem colorClass="bg-status-good" label="Tepat Waktu" />
           <LegendItem colorClass="bg-status-warning" label="Terlambat" />
+          <LegendItem colorClass="bg-zinc-300 dark:bg-zinc-500" label="Izin" />
           <LegendItem colorClass="bg-status-critical" label="Tidak Hadir" />
         </div>
       </div>
@@ -57,6 +58,13 @@ export default function AttendanceChart({
                       className="h-full bg-status-warning"
                       style={{ flexGrow: s.late }}
                       title={`Terlambat: ${s.late}`}
+                    />
+                  )}
+                  {s.excused > 0 && (
+                    <div
+                      className="h-full bg-zinc-300 dark:bg-zinc-500"
+                      style={{ flexGrow: s.excused }}
+                      title={`Izin: ${s.excused}`}
                     />
                   )}
                   {s.absent > 0 && (

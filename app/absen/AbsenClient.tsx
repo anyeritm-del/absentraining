@@ -14,6 +14,16 @@ interface ScheduleInfo {
 
 interface ScheduleStatus {
   schedule: ScheduleInfo;
+  assignmentStatus: "assigned" | "excused";
+  clockedInAt: string | null;
+  clockInStatus: "on_time" | "late" | null;
+  clockedOutAt: string | null;
+}
+
+interface HistoryEntry {
+  date: string;
+  session_name: string;
+  assignmentStatus: "assigned" | "excused";
   clockedInAt: string | null;
   clockInStatus: "on_time" | "late" | null;
   clockedOutAt: string | null;
@@ -23,6 +33,7 @@ interface TraineeData {
   trainee: { id: string; name: string; email: string };
   department: { id: string; name: string } | null;
   schedules: ScheduleStatus[];
+  history: HistoryEntry[];
 }
 
 type ActionType = "clock_in" | "clock_out";
@@ -33,6 +44,15 @@ function formatTime(iso: string | null): string {
     timeZone: "Asia/Jakarta",
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString("id-ID", {
+    timeZone: "Asia/Jakarta",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
   });
 }
 
@@ -48,6 +68,7 @@ export default function AbsenClient() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   async function loadMe(idToken: string) {
     setLoadingMe(true);
@@ -194,8 +215,9 @@ export default function AbsenClient() {
         </p>
       )}
 
-      {data.schedules.map(({ schedule, clockedInAt, clockInStatus, clockedOutAt }) => {
+      {data.schedules.map(({ schedule, assignmentStatus, clockedInAt, clockInStatus, clockedOutAt }) => {
         const isActive = action?.scheduleId === schedule.id;
+        const isExcused = assignmentStatus === "excused" && !clockedInAt;
         return (
           <div
             key={schedule.id}
@@ -215,13 +237,24 @@ export default function AbsenClient() {
                   Terlambat
                 </span>
               )}
+              {isExcused && (
+                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                  Izin
+                </span>
+              )}
             </div>
 
             <p className="mb-3 text-sm text-zinc-500">
               Masuk: {formatTime(clockedInAt)} &middot; Pulang: {formatTime(clockedOutAt)}
             </p>
 
-            {!isActive && (
+            {isExcused && (
+              <p className="text-center text-sm text-zinc-400">
+                Anda diizinkan tidak hadir di sesi ini.
+              </p>
+            )}
+
+            {!isExcused && !isActive && (
               <>
                 {!clockedInAt && (
                   <button
@@ -299,6 +332,58 @@ export default function AbsenClient() {
           </div>
         );
       })}
+
+      <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <button
+          onClick={() => setShowHistory((v) => !v)}
+          className="w-full text-center text-sm text-zinc-500 underline"
+        >
+          {showHistory ? "Sembunyikan riwayat" : "Lihat riwayat absen saya"}
+        </button>
+
+        {showHistory && (
+          <div className="mt-3 flex flex-col gap-2">
+            {data.history.length === 0 && (
+              <p className="text-center text-sm text-zinc-400">Belum ada riwayat.</p>
+            )}
+            {data.history.map((h, i) => (
+              <div
+                key={`${h.date}-${h.session_name}-${i}`}
+                className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+              >
+                <div>
+                  <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                    {formatDate(h.date)} &middot; {h.session_name}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    Masuk: {formatTime(h.clockedInAt)} &middot; Pulang: {formatTime(h.clockedOutAt)}
+                  </p>
+                </div>
+                {h.assignmentStatus === "excused" && !h.clockedInAt && (
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                    Izin
+                  </span>
+                )}
+                {h.clockInStatus === "late" && (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                    Terlambat
+                  </span>
+                )}
+                {h.clockInStatus === "on_time" && (
+                  <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-950 dark:text-green-400">
+                    Tepat Waktu
+                  </span>
+                )}
+                {!h.clockedInAt && h.assignmentStatus !== "excused" && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700 dark:bg-red-950 dark:text-red-400">
+                    Tidak Hadir
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -6,9 +6,15 @@ import type { Schedule } from "@/lib/repositories/schedules";
 import type { Department } from "@/lib/repositories/departments";
 import type { Trainee } from "@/lib/repositories/trainees";
 import type { Location } from "@/lib/repositories/locations";
+import type { AssignmentStatus } from "@/lib/repositories/scheduleAssignments";
 import SchedulesCalendar from "./SchedulesCalendar";
 
-type ScheduleWithAssignments = Schedule & { trainee_ids: string[] };
+interface TraineeAssignment {
+  trainee_id: string;
+  status: AssignmentStatus;
+}
+
+type ScheduleWithAssignments = Schedule & { trainees: TraineeAssignment[] };
 
 interface FormState {
   department_id: string;
@@ -18,7 +24,7 @@ interface FormState {
   start_time: string;
   end_time: string;
   location_id: string;
-  trainee_ids: string[];
+  trainees: TraineeAssignment[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -29,7 +35,7 @@ const EMPTY_FORM: FormState = {
   start_time: "",
   end_time: "",
   location_id: "",
-  trainee_ids: [],
+  trainees: [],
 };
 
 export default function SchedulesClient() {
@@ -76,10 +82,13 @@ export default function SchedulesClient() {
   const traineesInDepartment = (departmentId: string) =>
     trainees.filter((t) => t.department_id === departmentId);
 
-  function traineeNames(ids: string[]): string {
-    if (ids.length === 0) return "Belum ada";
-    return ids
-      .map((id) => trainees.find((t) => t.id === id)?.name ?? "?")
+  function traineeSummary(assignments: TraineeAssignment[]): string {
+    if (assignments.length === 0) return "Belum ada";
+    return assignments
+      .map((a) => {
+        const name = trainees.find((t) => t.id === a.trainee_id)?.name ?? "?";
+        return a.status === "excused" ? `${name} (izin)` : name;
+      })
       .join(", ");
   }
 
@@ -100,7 +109,7 @@ export default function SchedulesClient() {
       start_time: schedule.start_time,
       end_time: schedule.end_time,
       location_id: findMatchingLocationId(schedule),
-      trainee_ids: schedule.trainee_ids,
+      trainees: schedule.trainees,
     });
   }
 
@@ -110,13 +119,23 @@ export default function SchedulesClient() {
     setError(null);
   }
 
-  function toggleTrainee(id: string) {
-    setForm((f) => ({
-      ...f,
-      trainee_ids: f.trainee_ids.includes(id)
-        ? f.trainee_ids.filter((t) => t !== id)
-        : [...f.trainee_ids, id],
-    }));
+  // Cycle a trainee chip through: not assigned -> assigned -> izin -> not assigned.
+  function cycleTrainee(id: string) {
+    setForm((f) => {
+      const existing = f.trainees.find((a) => a.trainee_id === id);
+      if (!existing) {
+        return { ...f, trainees: [...f.trainees, { trainee_id: id, status: "assigned" }] };
+      }
+      if (existing.status === "assigned") {
+        return {
+          ...f,
+          trainees: f.trainees.map((a) =>
+            a.trainee_id === id ? { ...a, status: "excused" } : a
+          ),
+        };
+      }
+      return { ...f, trainees: f.trainees.filter((a) => a.trainee_id !== id) };
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -143,7 +162,7 @@ export default function SchedulesClient() {
         lat: location.lat,
         lng: location.lng,
         radius_m: location.radius_m,
-        trainee_ids: form.trainee_ids,
+        trainees: form.trainees,
       };
       const payload = editingId
         ? { ...basePayload, date: form.start_date }
@@ -196,7 +215,7 @@ export default function SchedulesClient() {
             required
             value={form.department_id}
             onChange={(e) =>
-              setForm({ ...form, department_id: e.target.value, trainee_ids: [] })
+              setForm({ ...form, department_id: e.target.value, trainees: [] })
             }
             className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
           >
@@ -313,9 +332,12 @@ export default function SchedulesClient() {
         </div>
 
         <div className="lg:col-span-4">
-          <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Anak Training di Sesi Ini
-          </label>
+          <div className="mb-2 flex items-center justify-between">
+            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Anak Training di Sesi Ini
+            </label>
+            <p className="text-xs text-zinc-400">Klik: belum &rarr; wajib hadir &rarr; izin &rarr; belum</p>
+          </div>
           {!form.department_id && (
             <p className="text-sm text-zinc-400">Pilih department dulu.</p>
           )}
@@ -327,24 +349,23 @@ export default function SchedulesClient() {
           {formTrainees.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {formTrainees.map((t) => {
-                const checked = form.trainee_ids.includes(t.id);
+                const assignment = form.trainees.find((a) => a.trainee_id === t.id);
+                const stateClass =
+                  assignment?.status === "excused"
+                    ? "border-status-warning bg-status-warning text-white"
+                    : assignment?.status === "assigned"
+                      ? "border-brand bg-brand text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-brand"
+                      : "border-zinc-300 text-zinc-600 dark:border-zinc-700 dark:text-zinc-300";
                 return (
-                  <label
+                  <button
+                    type="button"
                     key={t.id}
-                    className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm ${
-                      checked
-                        ? "border-brand bg-brand text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-brand"
-                        : "border-zinc-300 text-zinc-600 dark:border-zinc-700 dark:text-zinc-300"
-                    }`}
+                    onClick={() => cycleTrainee(t.id)}
+                    className={`rounded-full border px-3 py-1.5 text-sm ${stateClass}`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleTrainee(t.id)}
-                      className="hidden"
-                    />
                     {t.name}
-                  </label>
+                    {assignment?.status === "excused" && " (izin)"}
+                  </button>
                 );
               })}
             </div>
@@ -412,7 +433,7 @@ export default function SchedulesClient() {
                   {schedule.start_time}–{schedule.end_time}
                 </td>
                 <td className="px-4 py-3 text-zinc-500">
-                  {traineeNames(schedule.trainee_ids)}
+                  {traineeSummary(schedule.trainees)}
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button

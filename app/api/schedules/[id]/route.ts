@@ -10,6 +10,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const traineeAssignmentSchema = z.object({
+  trainee_id: z.string().min(1),
+  status: z.enum(["assigned", "excused"]).default("assigned"),
+});
+
 const scheduleSchema = z.object({
   department_id: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal harus YYYY-MM-DD"),
@@ -19,7 +24,7 @@ const scheduleSchema = z.object({
   lat: z.number(),
   lng: z.number(),
   radius_m: z.number().positive(),
-  trainee_ids: z.array(z.string()).default([]),
+  trainees: z.array(traineeAssignmentSchema).default([]),
 });
 
 export async function PATCH(
@@ -37,7 +42,7 @@ export async function PATCH(
       { status: 400 }
     );
   }
-  const { trainee_ids, ...scheduleData } = parsed.data;
+  const { trainees, ...scheduleData } = parsed.data;
 
   const existing = await getScheduleById(id);
   if (!existing) {
@@ -54,7 +59,7 @@ export async function PATCH(
       .filter((t) => t.department_id === scheduleData.department_id)
       .map((t) => t.id)
   );
-  const invalidId = trainee_ids.find((tid) => !validTraineeIds.has(tid));
+  const invalidId = trainees.find((t) => !validTraineeIds.has(t.trainee_id));
   if (invalidId) {
     return NextResponse.json(
       { error: "Salah satu anak training tidak berada di department ini" },
@@ -64,8 +69,8 @@ export async function PATCH(
 
   try {
     const schedule = await updateSchedule(id, scheduleData);
-    await setAssignmentsForSchedule(id, trainee_ids);
-    return NextResponse.json({ schedule: { ...schedule, trainee_ids } });
+    await setAssignmentsForSchedule(id, trainees);
+    return NextResponse.json({ schedule: { ...schedule, trainees } });
   } catch {
     return NextResponse.json({ error: "Jadwal tidak ditemukan" }, { status: 404 });
   }

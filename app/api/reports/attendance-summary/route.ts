@@ -16,6 +16,7 @@ export interface TraineeAttendanceSummary {
   total_sessions: number;
   present: number;
   late: number;
+  excused: number;
   absent: number;
   attendance_rate: number; // 0-100
 }
@@ -58,29 +59,37 @@ export async function GET(req: Request) {
 
   const summaries: TraineeAttendanceSummary[] = scopedTrainees
     .map((trainee) => {
-      const assignedScheduleIds = assignments
-        .filter((a) => a.trainee_id === trainee.id && scheduleIdsInRange.has(a.schedule_id))
-        .map((a) => a.schedule_id);
+      const traineeAssignments = assignments.filter(
+        (a) => a.trainee_id === trainee.id && scheduleIdsInRange.has(a.schedule_id)
+      );
 
       let present = 0;
       let late = 0;
-      for (const scheduleId of assignedScheduleIds) {
+      let excused = 0;
+      for (const assignment of traineeAssignments) {
         const clockIn = attendance.find(
           (a) =>
             a.trainee_id === trainee.id &&
-            a.schedule_id === scheduleId &&
+            a.schedule_id === assignment.schedule_id &&
             a.type === "clock_in"
         );
         if (clockIn) {
           present += 1;
           if (clockIn.status === "late") late += 1;
+        } else if (assignment.status === "excused") {
+          // Only counts as excused if they actually didn't show up — if an
+          // excused trainee attends anyway it just counts as present.
+          excused += 1;
         }
       }
 
-      const total_sessions = assignedScheduleIds.length;
-      const absent = total_sessions - present;
+      const total_sessions = traineeAssignments.length;
+      const required_sessions = total_sessions - excused;
+      const absent = Math.max(0, required_sessions - present);
       const attendance_rate =
-        total_sessions === 0 ? 0 : Math.round((present / total_sessions) * 100);
+        required_sessions === 0
+          ? 100
+          : Math.min(100, Math.round((present / required_sessions) * 100));
 
       return {
         trainee_id: trainee.id,
@@ -90,6 +99,7 @@ export async function GET(req: Request) {
         total_sessions,
         present,
         late,
+        excused,
         absent,
         attendance_rate,
       };
