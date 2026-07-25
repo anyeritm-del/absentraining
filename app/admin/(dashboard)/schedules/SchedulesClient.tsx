@@ -125,7 +125,9 @@ export default function SchedulesClient() {
       setError("Pilih department terlebih dahulu");
       return;
     }
-    const location = locations.find((l) => l.id === form.location_id);
+    const effectiveLocationId =
+      form.location_id || (locations.length === 1 ? locations[0].id : "");
+    const location = locations.find((l) => l.id === effectiveLocationId);
     if (!location) {
       setError("Pilih lokasi training terlebih dahulu");
       return;
@@ -279,7 +281,7 @@ export default function SchedulesClient() {
           <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Lokasi Training
           </label>
-          {locations.length === 0 ? (
+          {locations.length === 0 && (
             <p className="text-sm text-zinc-400">
               Belum ada lokasi tersimpan.{" "}
               <Link href="/admin/locations" className="underline">
@@ -287,7 +289,13 @@ export default function SchedulesClient() {
               </Link>
               .
             </p>
-          ) : (
+          )}
+          {locations.length === 1 && (
+            <p className="text-sm text-zinc-600 dark:text-zinc-300">
+              {locations[0].name} (radius {locations[0].radius_m}m)
+            </p>
+          )}
+          {locations.length > 1 && (
             <select
               required
               value={form.location_id}
