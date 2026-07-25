@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/admin/trainees", label: "Anak Training", fullAccessOnly: false },
   { href: "/admin/schedules", label: "Jadwal", fullAccessOnly: false },
   { href: "/admin/attendance", label: "Absensi", fullAccessOnly: false },
+  { href: "/admin/reports", label: "Report", fullAccessOnly: false },
   { href: "/admin/admins", label: "Kelola Admin", fullAccessOnly: true },
 ];
 
