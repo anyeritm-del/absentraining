@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Department } from "@/lib/repositories/departments";
 import type { TraineeAttendanceSummary } from "@/app/api/reports/attendance-summary/route";
 import { todayInJakarta } from "@/lib/date";
+import AttendanceChart from "./AttendanceChart";
 
 function firstDayOfCurrentMonth(): string {
   const today = todayInJakarta();
@@ -158,6 +159,8 @@ export default function ReportsClient() {
           {error}
         </p>
       )}
+
+      <AttendanceChart summaries={summaries} />
 
       <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <table className="w-full text-sm">

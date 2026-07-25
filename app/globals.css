@@ -13,6 +13,10 @@
   /* Aston Anyer Beach Hotel brand colors, sampled from public/logo.png */
   --color-brand: #00205b;
   --color-brand-muted: #9d9d9d;
+  /* Fixed status palette (never themed) — used for present/late/absent charts */
+  --color-status-good: #0ca30c;
+  --color-status-warning: #fab219;
+  --color-status-critical: #d03b3b;
 }
 
 @media (prefers-color-scheme: dark) {
