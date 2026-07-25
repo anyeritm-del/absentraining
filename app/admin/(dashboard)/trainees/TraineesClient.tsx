@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import type { Trainee, TraineeStatus } from "@/lib/repositories/trainees";
 import type { Department } from "@/lib/repositories/departments";
 
@@ -156,14 +155,18 @@ export default function TraineesClient() {
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Email
+            Email (akun Google pribadi)
           </label>
           <input
             type="email"
+            required
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
           />
+          <p className="mt-1 text-xs text-zinc-400">
+            Wajib diisi dengan akun Google pribadi — dipakai untuk sign-in saat absen.
+          </p>
         </div>
         {editingId && (
           <div>
@@ -214,7 +217,7 @@ export default function TraineesClient() {
             <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-800">
               <th className="px-4 py-3 font-medium">Nama</th>
               <th className="px-4 py-3 font-medium">Department</th>
-              <th className="px-4 py-3 font-medium">Kontak</th>
+              <th className="px-4 py-3 font-medium">Email / Kontak</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
@@ -232,7 +235,8 @@ export default function TraineesClient() {
                   {departmentName(trainee.department_id)}
                 </td>
                 <td className="px-4 py-3 text-zinc-500">
-                  {trainee.phone || trainee.email || "-"}
+                  <div>{trainee.email}</div>
+                  {trainee.phone && <div className="text-xs text-zinc-400">{trainee.phone}</div>}
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -246,12 +250,6 @@ export default function TraineesClient() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
-                  <Link
-                    href={`/admin/trainees/${trainee.id}/qr`}
-                    className="mr-3 text-zinc-600 hover:underline dark:text-zinc-300"
-                  >
-                    QR
-                  </Link>
                   <button
                     onClick={() => startEdit(trainee)}
                     className="mr-3 text-zinc-600 hover:underline dark:text-zinc-300"

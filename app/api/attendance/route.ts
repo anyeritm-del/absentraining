@@ -5,7 +5,7 @@ import {
   createAttendance,
   getAttendanceForTraineeSchedule,
 } from "@/lib/repositories/attendance";
-import { getTraineeByCode } from "@/lib/repositories/trainees";
+import { getTraineeByEmail } from "@/lib/repositories/trainees";
 import { getScheduleById } from "@/lib/repositories/schedules";
 import { haversineDistanceMeters } from "@/lib/distance";
 import { minutesSinceMidnight, nowTimeInJakarta } from "@/lib/date";
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
 }
 
 const postSchema = z.object({
-  code: z.string().min(1),
+  google_id_token: z.string().min(1),
   schedule_id: z.string().min(1),
   type: z.enum(["clock_in", "clock_out"]),
   lat: z.coerce.number(),
@@ -53,16 +53,19 @@ export async function POST(req: Request) {
   }
 
   const parsed = postSchema.safeParse({
-    code: form.get("code"),
+    google_id_token: form.get("google_id_token"),
     schedule_id: form.get("schedule_id"),
     type: form.get("type"),
     lat: form.get("lat"),
     lng: form.get("lng"),
   });
   if (!parsed.success) {
-    return NextResponse.json({ error: "Data absen tidak lengkap/valid" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Anda harus sign in dengan Google untuk absen" },
+      { status: 401 }
+    );
   }
-  const { code, schedule_id, type, lat, lng } = parsed.data;
+  const { google_id_token, schedule_id, type, lat, lng } = parsed.data;
 
   const photo = form.get("photo");
   if (!(photo instanceof File) || photo.size === 0) {
@@ -72,28 +75,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ukuran foto terlalu besar" }, { status: 400 });
   }
 
-  const trainee = await getTraineeByCode(code);
-  if (!trainee || trainee.status !== "active") {
-    return NextResponse.json({ error: "Kode absen tidak valid" }, { status: 404 });
+  // Anti "titip absen": identity comes from the verified Google account, not
+  // a shareable code — every absen must carry a token that matches a trainee.
+  const verifiedEmail = await verifyGoogleIdToken(google_id_token);
+  if (!verifiedEmail) {
+    return NextResponse.json(
+      { error: "Sesi Google tidak valid, silakan sign in ulang" },
+      { status: 401 }
+    );
   }
 
-  // Anti "titip absen": once a trainee has a registered email, every absen
-  // from them must carry a Google ID token whose verified email matches it.
-  if (trainee.email) {
-    const googleIdToken = form.get("google_id_token");
-    if (typeof googleIdToken !== "string" || !googleIdToken) {
-      return NextResponse.json(
-        { error: "Anda harus sign in dengan Google terdaftar untuk absen" },
-        { status: 401 }
-      );
-    }
-    const verifiedEmail = await verifyGoogleIdToken(googleIdToken);
-    if (!verifiedEmail || verifiedEmail.toLowerCase() !== trainee.email.toLowerCase()) {
-      return NextResponse.json(
-        { error: "Akun Google tidak sesuai dengan yang terdaftar untuk Anda" },
-        { status: 403 }
-      );
-    }
+  const trainee = await getTraineeByEmail(verifiedEmail);
+  if (!trainee || trainee.status !== "active") {
+    return NextResponse.json(
+      { error: `Email ${verifiedEmail} belum terdaftar sebagai anak training. Hubungi admin.` },
+      { status: 404 }
+    );
   }
 
   const schedule = await getScheduleById(schedule_id);

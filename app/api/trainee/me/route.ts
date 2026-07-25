@@ -1,20 +1,35 @@
 import { NextResponse } from "next/server";
-import { getTraineeByCode } from "@/lib/repositories/trainees";
+import { z } from "zod";
+import { verifyGoogleIdToken } from "@/lib/googleIdToken";
+import { getTraineeByEmail } from "@/lib/repositories/trainees";
 import { getDepartmentById } from "@/lib/repositories/departments";
 import { getSchedulesForDepartmentOnDate } from "@/lib/repositories/schedules";
 import { getAttendanceForTraineeSchedule } from "@/lib/repositories/attendance";
 import { todayInJakarta } from "@/lib/date";
 
-
 export const dynamic = "force-dynamic";
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ code: string }> }
-) {
-  const { code } = await params;
-  const trainee = await getTraineeByCode(code);
+
+const bodySchema = z.object({
+  google_id_token: z.string().min(1),
+});
+
+export async function POST(req: Request) {
+  const parsed = bodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Sign in dengan Google terlebih dahulu" }, { status: 400 });
+  }
+
+  const email = await verifyGoogleIdToken(parsed.data.google_id_token);
+  if (!email) {
+    return NextResponse.json({ error: "Sesi Google tidak valid, silakan sign in ulang" }, { status: 401 });
+  }
+
+  const trainee = await getTraineeByEmail(email);
   if (!trainee || trainee.status !== "active") {
-    return NextResponse.json({ error: "Kode absen tidak valid" }, { status: 404 });
+    return NextResponse.json(
+      { error: `Email ${email} belum terdaftar sebagai anak training. Hubungi admin.` },
+      { status: 404 }
+    );
   }
 
   const [department, schedules] = await Promise.all([
@@ -37,13 +52,7 @@ export async function GET(
   );
 
   return NextResponse.json({
-    trainee: {
-      id: trainee.id,
-      name: trainee.name,
-      code: trainee.code,
-      email: trainee.email,
-      requiresGoogleSignIn: trainee.email.length > 0,
-    },
+    trainee: { id: trainee.id, name: trainee.name, email: trainee.email },
     department: department ? { id: department.id, name: department.name } : null,
     schedules: schedulesWithStatus,
   });

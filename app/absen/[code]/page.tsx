@@ -1,17 +1,7 @@
-import AbsenClient from "./AbsenClient";
+import { redirect } from "next/navigation";
 
-export default async function AbsenPage({
-  params,
-}: {
-  params: Promise<{ code: string }>;
-}) {
-  const { code } = await params;
-
-  return (
-    <div className="flex flex-1 justify-center bg-zinc-50 px-4 py-8 dark:bg-black">
-      <div className="w-full max-w-md">
-        <AbsenClient code={code} />
-      </div>
-    </div>
-  );
+// Per-trainee links have been replaced by a single shared link that
+// identifies the trainee via Google Sign-In instead of a URL code.
+export default function LegacyAbsenCodePage() {
+  redirect("/absen");
 }

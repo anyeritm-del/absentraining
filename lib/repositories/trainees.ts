@@ -27,7 +27,7 @@ export interface Trainee {
   department_id: string;
   phone: string;
   email: string;
-  code: string;
+  code: string; // legacy per-trainee link id; only used as a filename-safe identifier now
   status: TraineeStatus;
   created_at: string;
 }
@@ -46,9 +46,11 @@ export async function getTraineeById(id: string): Promise<Trainee | null> {
   return list.find((t) => t.id === id) ?? null;
 }
 
-export async function getTraineeByCode(code: string): Promise<Trainee | null> {
+export async function getTraineeByEmail(email: string): Promise<Trainee | null> {
   const list = await listTrainees();
-  return list.find((t) => t.code === code) ?? null;
+  return (
+    list.find((t) => t.email.toLowerCase() === email.toLowerCase()) ?? null
+  );
 }
 
 export async function createTrainee(data: {

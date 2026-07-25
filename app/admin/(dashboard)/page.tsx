@@ -6,6 +6,7 @@ import type { Trainee } from "@/lib/repositories/trainees";
 import type { Schedule } from "@/lib/repositories/schedules";
 import type { AttendanceRecord } from "@/lib/repositories/attendance";
 import { todayInJakarta } from "@/lib/date";
+import AbsenLinkCard from "@/components/AbsenLinkCard";
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
@@ -75,6 +76,8 @@ export default function DashboardPage() {
         <StatCard label="Sudah Absen Masuk" value={todayClockIns.length} />
         <StatCard label="Terlambat" value={todayLate.length} />
       </div>
+
+      <AbsenLinkCard />
 
       {todaySchedules.length === 0 && (
         <p className="text-sm text-zinc-500">
