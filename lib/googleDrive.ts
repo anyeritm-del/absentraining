@@ -33,6 +33,10 @@ export async function uploadPhoto(
       body: Readable.from(buffer),
     },
     fields: "id",
+    // Required whenever the parent lives inside a Shared Drive (service
+    // accounts have no My Drive storage quota of their own, so photo uploads
+    // must land in a Shared Drive — this flag is a no-op for a normal folder).
+    supportsAllDrives: true,
   });
   const fileId = res.data.id;
   if (!fileId) throw new Error("Google Drive did not return a file id");
@@ -44,10 +48,14 @@ export async function getPhotoStream(fileId: string): Promise<{
   mimeType: string;
 }> {
   const drive = getDriveClient();
-  const meta = await drive.files.get({ fileId, fields: "mimeType" });
+  const meta = await drive.files.get({
+    fileId,
+    fields: "mimeType",
+    supportsAllDrives: true,
+  });
   const mimeType = meta.data.mimeType ?? "image/jpeg";
   const res = await drive.files.get(
-    { fileId, alt: "media" },
+    { fileId, alt: "media", supportsAllDrives: true },
     { responseType: "stream" }
   );
   return { stream: res.data as NodeJS.ReadableStream, mimeType };

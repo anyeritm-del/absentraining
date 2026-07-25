@@ -28,10 +28,23 @@ bawah secara berurutan.
 
 ## 4. Siapkan folder Google Drive untuk foto
 
-1. Buat folder baru di Google Drive, misal "Foto Absensi Training".
-2. Klik **Share**, tambahkan email service account yang sama dengan akses **Editor**.
-3. Ambil Folder ID dari URL:
-   `https://drive.google.com/drive/folders/`**`INI_FOLDER_ID`**
+Service account **tidak punya kuota penyimpanan sendiri** di My Drive biasa —
+upload foto akan gagal dengan error kuota jika tujuannya folder biasa. Karena
+itu tujuan upload **harus** sebuah **Shared Drive** (dulu disebut Team Drive),
+yang memakai kuota organisasi, bukan kuota akun.
+
+1. Buat Shared Drive baru (atau pakai yang sudah ada), misal "Absensi Training".
+   Di Google Drive: **Shared drives > New**.
+2. Buka Shared Drive tsb → klik **Manage members** → tambahkan email service
+   account (langkah 2) dengan role **Content Manager** (minimal, agar bisa
+   upload & baca file — bukan sekadar "Share" pada satu folder seperti biasa,
+   karena akses Shared Drive diatur lewat membership Drive itu sendiri).
+3. Ambil ID-nya dari URL saat membuka Shared Drive tsb:
+   `https://drive.google.com/drive/folders/`**`INI_DRIVE_ID`**
+   (ID Shared Drive selalu diawali `0A`, berbeda dari ID folder biasa).
+4. Boleh langsung pakai root Shared Drive ini sebagai `GOOGLE_DRIVE_FOLDER_ID`,
+   atau buat subfolder di dalamnya dan pakai ID subfolder tsb (service account
+   yang sudah jadi member Shared Drive otomatis punya akses ke semua isinya).
 
 ## 5. Isi Environment Variables
 
@@ -42,7 +55,7 @@ Salin `.env.local.example` menjadi `.env.local`, lalu isi:
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Email service account (langkah 2) |
 | `GOOGLE_PRIVATE_KEY` | Nilai `private_key` dari file JSON (langkah 2). Biarkan dalam tanda kutip dan simpan `\n` apa adanya |
 | `GOOGLE_SHEET_ID` | Sheet ID (langkah 3) |
-| `GOOGLE_DRIVE_FOLDER_ID` | Folder ID (langkah 4) |
+| `GOOGLE_DRIVE_FOLDER_ID` | ID Shared Drive atau subfolder di dalamnya (langkah 4) |
 | `SESSION_SECRET` | String acak panjang, contoh generate: `openssl rand -base64 32` |
 | `ADMIN_EMAIL` | Email login admin pertama |
 | `ADMIN_PASSWORD` | Password admin pertama (hanya dipakai sekali saat setup, akan di-hash) |
