@@ -11,6 +11,7 @@ import { haversineDistanceMeters } from "@/lib/distance";
 import { minutesSinceMidnight, nowTimeInJakarta } from "@/lib/date";
 import { uploadPhoto } from "@/lib/googleDrive";
 import { getJoinedAttendance } from "@/lib/attendanceView";
+import { verifyGoogleIdToken } from "@/lib/googleIdToken";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,25 @@ export async function POST(req: Request) {
   const trainee = await getTraineeByCode(code);
   if (!trainee || trainee.status !== "active") {
     return NextResponse.json({ error: "Kode absen tidak valid" }, { status: 404 });
+  }
+
+  // Anti "titip absen": once a trainee has a registered email, every absen
+  // from them must carry a Google ID token whose verified email matches it.
+  if (trainee.email) {
+    const googleIdToken = form.get("google_id_token");
+    if (typeof googleIdToken !== "string" || !googleIdToken) {
+      return NextResponse.json(
+        { error: "Anda harus sign in dengan Google terdaftar untuk absen" },
+        { status: 401 }
+      );
+    }
+    const verifiedEmail = await verifyGoogleIdToken(googleIdToken);
+    if (!verifiedEmail || verifiedEmail.toLowerCase() !== trainee.email.toLowerCase()) {
+      return NextResponse.json(
+        { error: "Akun Google tidak sesuai dengan yang terdaftar untuk Anda" },
+        { status: 403 }
+      );
+    }
   }
 
   const schedule = await getScheduleById(schedule_id);

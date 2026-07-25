@@ -37,7 +37,13 @@ export async function GET(
   );
 
   return NextResponse.json({
-    trainee: { id: trainee.id, name: trainee.name, code: trainee.code },
+    trainee: {
+      id: trainee.id,
+      name: trainee.name,
+      code: trainee.code,
+      email: trainee.email,
+      requiresGoogleSignIn: trainee.email.length > 0,
+    },
     department: department ? { id: department.id, name: department.name } : null,
     schedules: schedulesWithStatus,
   });

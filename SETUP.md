@@ -46,7 +46,31 @@ yang memakai kuota organisasi, bukan kuota akun.
    atau buat subfolder di dalamnya dan pakai ID subfolder tsb (service account
    yang sudah jadi member Shared Drive otomatis punya akses ke semua isinya).
 
-## 5. Isi Environment Variables
+## 5. Google Sign-In untuk cegah titip absen (opsional tapi disarankan)
+
+Fitur ini mewajibkan anak training sign in dengan **akun Google pribadi** (bukan
+akun bersama/per-kamar) sebelum bisa absen, dan mencocokkan email akun tsb
+dengan email yang didaftarkan admin — supaya link absen tidak bisa dipakai
+orang lain seenaknya.
+
+1. Di Google Cloud Project yang sama, buka **APIs & Services > Credentials >
+   Create Credentials > OAuth client ID**.
+2. Kalau diminta setup **OAuth consent screen** dulu: pilih **External**, isi
+   nama app & email support, dan untuk scope cukup default (`email`,
+   `profile`) — ini scope non-sensitif jadi tidak perlu proses verifikasi
+   Google yang lama. Publish ke Production setelah selesai.
+3. Application type: **Web application**. Tambahkan di **Authorized JavaScript
+   origins**:
+   - `http://localhost:3000` (untuk development)
+   - `https://<domain-aplikasi-anda>` (domain Vercel produksi)
+4. Setelah dibuat, copy **Client ID**-nya (bentuknya seperti
+   `xxxxxxxx.apps.googleusercontent.com`) → isi ke `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
+5. Fitur ini **per-trainee**: hanya aktif untuk anak training yang kolom
+   email-nya sudah diisi admin (di menu Anak Training). Yang belum diisi
+   emailnya tetap bisa absen tanpa Google Sign-In seperti biasa — jadi bisa
+   diaktifkan bertahap begitu akun Google pribadi tiap anak training siap.
+
+## 6. Isi Environment Variables
 
 Salin `.env.local.example` menjadi `.env.local`, lalu isi:
 
@@ -58,13 +82,14 @@ Salin `.env.local.example` menjadi `.env.local`, lalu isi:
 | `GOOGLE_DRIVE_FOLDER_ID` | ID Shared Drive atau subfolder di dalamnya (langkah 4) |
 | `SESSION_SECRET` | String acak panjang, contoh generate: `openssl rand -base64 32` |
 | `ADMIN_EMAIL` | Email login admin pertama |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | OAuth Client ID dari langkah 5 (kosongkan jika belum mengaktifkan Google Sign-In) |
 | `ADMIN_PASSWORD` | Password admin pertama (hanya dipakai sekali saat setup, akan di-hash) |
 
 Untuk deploy di Vercel, isi env vars yang sama di **Project Settings > Environment Variables**
 (untuk `GOOGLE_PRIVATE_KEY`, tempel apa adanya termasuk `\n` literal — kode aplikasi
 sudah menangani konversinya).
 
-## 6. Jalankan setup sekali
+## 7. Jalankan setup sekali
 
 Setelah env vars terisi (lokal dengan `npm run dev`, atau setelah deploy pertama di Vercel), panggil endpoint setup satu kali untuk membuat header tab spreadsheet dan admin pertama:
 
@@ -74,11 +99,11 @@ curl -X POST https://<domain-aplikasi-anda>/api/setup
 
 Response sukses akan menyebutkan admin yang dibuat. Endpoint ini aman dipanggil berkali-kali — jika admin sudah ada, ia hanya memverifikasi header tab tanpa membuat admin baru.
 
-## 7. Login & mulai pakai
+## 8. Login & mulai pakai
 
 1. Buka `https://<domain-aplikasi-anda>/admin/login`, masuk dengan `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 2. Buat **Department**.
-3. Tambahkan **Anak Training** (setiap anak otomatis dapat kode unik + QR — buka menu QR untuk cetak/kirim linknya).
+3. Tambahkan **Anak Training** (setiap anak otomatis dapat kode unik + QR — buka menu QR untuk cetak/kirim linknya). Isi kolom **email** dengan akun Google pribadi mereka kalau ingin mengaktifkan Google Sign-In (langkah 5) untuk anak training tsb.
 4. Buat **Jadwal** per department: tanggal, sesi, jam, dan titik lokasi (pakai tombol "Gunakan lokasi saya sekarang" saat berada di lokasi training, atau isi lat/lng manual).
 5. Anak training membuka link/scan QR mereka di `/absen/{code}` untuk absen masuk & pulang dengan foto + lokasi.
 6. Lihat rekap di menu **Absensi**, atau buka spreadsheet Google Sheets langsung untuk export/analisa manual.
