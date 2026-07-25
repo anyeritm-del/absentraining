@@ -14,22 +14,31 @@ function formatTimestamp(iso: string): string {
   });
 }
 
-export default function AttendanceClient({
-  initialAttendance,
-  departments,
-  trainees,
-  sheetUrl,
-}: {
-  initialAttendance: AttendanceView[];
-  departments: Department[];
-  trainees: Trainee[];
-  sheetUrl: string | null;
-}) {
-  const [attendance, setAttendance] = useState(initialAttendance);
+export default function AttendanceClient({ sheetUrl }: { sheetUrl: string | null }) {
+  const [attendance, setAttendance] = useState<AttendanceView[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [trainees, setTrainees] = useState<Trainee[]>([]);
   const [departmentId, setDepartmentId] = useState("");
   const [date, setDate] = useState("");
   const [traineeId, setTraineeId] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    async function loadFilters() {
+      const [deptRes, traineeRes] = await Promise.all([
+        fetch("/api/departments"),
+        fetch("/api/trainees"),
+      ]);
+      const [deptData, traineeData] = await Promise.all([
+        deptRes.json(),
+        traineeRes.json(),
+      ]);
+      if (deptRes.ok) setDepartments(deptData.departments);
+      if (traineeRes.ok) setTrainees(traineeData.trainees);
+    }
+     
+    loadFilters();
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);

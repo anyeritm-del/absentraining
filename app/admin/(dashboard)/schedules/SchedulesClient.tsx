@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import type { Schedule } from "@/lib/repositories/schedules";
 import type { Department } from "@/lib/repositories/departments";
 
@@ -27,19 +26,35 @@ const EMPTY_FORM: FormState = {
   radius_m: "100",
 };
 
-export default function SchedulesClient({
-  initialSchedules,
-  departments,
-}: {
-  initialSchedules: Schedule[];
-  departments: Department[];
-}) {
-  const router = useRouter();
+export default function SchedulesClient() {
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoadingList(true);
+    const [scheduleRes, deptRes] = await Promise.all([
+      fetch("/api/schedules"),
+      fetch("/api/departments"),
+    ]);
+    const [scheduleData, deptData] = await Promise.all([
+      scheduleRes.json(),
+      deptRes.json(),
+    ]);
+    if (scheduleRes.ok) setSchedules(scheduleData.schedules);
+    if (deptRes.ok) setDepartments(deptData.departments);
+    setLoadingList(false);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData();
+  }, [fetchData]);
 
   const departmentName = (id: string) =>
     departments.find((d) => d.id === id)?.name ?? "-";
@@ -120,7 +135,7 @@ export default function SchedulesClient({
         return;
       }
       resetForm();
-      router.refresh();
+      await fetchData();
     } catch {
       setError("Terjadi kesalahan jaringan");
     } finally {
@@ -131,10 +146,10 @@ export default function SchedulesClient({
   async function handleDelete(id: string) {
     if (!confirm("Hapus jadwal ini?")) return;
     const res = await fetch(`/api/schedules/${id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+    if (res.ok) await fetchData();
   }
 
-  const sorted = [...initialSchedules].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const sorted = [...schedules].sort((a, b) => (a.date < b.date ? 1 : -1));
 
   return (
     <div className="flex flex-col gap-6">
@@ -326,10 +341,17 @@ export default function SchedulesClient({
                 </td>
               </tr>
             ))}
-            {sorted.length === 0 && (
+            {!loadingList && sorted.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-6 text-center text-zinc-400">
                   Belum ada jadwal.
+                </td>
+              </tr>
+            )}
+            {loadingList && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-zinc-400">
+                  Memuat...
                 </td>
               </tr>
             )}

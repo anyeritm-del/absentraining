@@ -1,20 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import type { Department } from "@/lib/repositories/departments";
 
-export default function DepartmentsClient({
-  initialDepartments,
-}: {
-  initialDepartments: Department[];
-}) {
-  const router = useRouter();
+export default function DepartmentsClient() {
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const fetchDepartments = useCallback(async () => {
+    setLoadingList(true);
+    const res = await fetch("/api/departments");
+    const data = await res.json();
+    if (res.ok) setDepartments(data.departments);
+    setLoadingList(false);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchDepartments();
+  }, [fetchDepartments]);
 
   function startEdit(dept: Department) {
     setEditingId(dept.id);
@@ -48,7 +57,7 @@ export default function DepartmentsClient({
         return;
       }
       resetForm();
-      router.refresh();
+      await fetchDepartments();
     } catch {
       setError("Terjadi kesalahan jaringan");
     } finally {
@@ -61,7 +70,7 @@ export default function DepartmentsClient({
       return;
     }
     const res = await fetch(`/api/departments/${id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+    if (res.ok) await fetchDepartments();
   }
 
   return (
@@ -127,7 +136,7 @@ export default function DepartmentsClient({
             </tr>
           </thead>
           <tbody>
-            {initialDepartments.map((dept) => (
+            {departments.map((dept) => (
               <tr key={dept.id} className="border-b border-zinc-100 last:border-0 dark:border-zinc-800">
                 <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-50">
                   {dept.name}
@@ -149,10 +158,17 @@ export default function DepartmentsClient({
                 </td>
               </tr>
             ))}
-            {initialDepartments.length === 0 && (
+            {!loadingList && departments.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-4 py-6 text-center text-zinc-400">
                   Belum ada department.
+                </td>
+              </tr>
+            )}
+            {loadingList && (
+              <tr>
+                <td colSpan={3} className="px-4 py-6 text-center text-zinc-400">
+                  Memuat...
                 </td>
               </tr>
             )}

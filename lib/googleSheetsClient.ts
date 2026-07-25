@@ -51,8 +51,24 @@ function columnLetter(n: number): string {
   return s;
 }
 
-/** Creates the header row for a tab if it doesn't already have one. */
+async function ensureTabExists(tab: string) {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === tab);
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{ addSheet: { properties: { title: tab } } }],
+      },
+    });
+  }
+}
+
+/** Creates the tab (if missing) and its header row (if missing). */
 export async function ensureHeaders(tab: string, headers: string[]) {
+  await ensureTabExists(tab);
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();
   const res = await sheets.spreadsheets.values.get({

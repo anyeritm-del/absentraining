@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { Trainee, TraineeStatus } from "@/lib/repositories/trainees";
 import type { Department } from "@/lib/repositories/departments";
 
@@ -22,18 +21,34 @@ const EMPTY_FORM: FormState = {
   status: "active",
 };
 
-export default function TraineesClient({
-  initialTrainees,
-  departments,
-}: {
-  initialTrainees: Trainee[];
-  departments: Department[];
-}) {
-  const router = useRouter();
+export default function TraineesClient() {
+  const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [loadingList, setLoadingList] = useState(true);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoadingList(true);
+    const [traineeRes, deptRes] = await Promise.all([
+      fetch("/api/trainees"),
+      fetch("/api/departments"),
+    ]);
+    const [traineeData, deptData] = await Promise.all([
+      traineeRes.json(),
+      deptRes.json(),
+    ]);
+    if (traineeRes.ok) setTrainees(traineeData.trainees);
+    if (deptRes.ok) setDepartments(deptData.departments);
+    setLoadingList(false);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchData();
+  }, [fetchData]);
 
   const departmentName = (id: string) =>
     departments.find((d) => d.id === id)?.name ?? "-";
@@ -78,7 +93,7 @@ export default function TraineesClient({
         return;
       }
       resetForm();
-      router.refresh();
+      await fetchData();
     } catch {
       setError("Terjadi kesalahan jaringan");
     } finally {
@@ -91,7 +106,7 @@ export default function TraineesClient({
       return;
     }
     const res = await fetch(`/api/trainees/${id}`, { method: "DELETE" });
-    if (res.ok) router.refresh();
+    if (res.ok) await fetchData();
   }
 
   return (
@@ -205,7 +220,7 @@ export default function TraineesClient({
             </tr>
           </thead>
           <tbody>
-            {initialTrainees.map((trainee) => (
+            {trainees.map((trainee) => (
               <tr
                 key={trainee.id}
                 className="border-b border-zinc-100 last:border-0 dark:border-zinc-800"
@@ -252,10 +267,17 @@ export default function TraineesClient({
                 </td>
               </tr>
             ))}
-            {initialTrainees.length === 0 && (
+            {!loadingList && trainees.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
                   Belum ada anak training.
+                </td>
+              </tr>
+            )}
+            {loadingList && (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
+                  Memuat...
                 </td>
               </tr>
             )}

@@ -1,7 +1,10 @@
-import { listDepartments } from "@/lib/repositories/departments";
-import { listTrainees } from "@/lib/repositories/trainees";
-import { listSchedules } from "@/lib/repositories/schedules";
-import { listAttendance } from "@/lib/repositories/attendance";
+"use client";
+
+import { useEffect, useState } from "react";
+import type { Department } from "@/lib/repositories/departments";
+import type { Trainee } from "@/lib/repositories/trainees";
+import type { Schedule } from "@/lib/repositories/schedules";
+import type { AttendanceRecord } from "@/lib/repositories/attendance";
 import { todayInJakarta } from "@/lib/date";
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
@@ -13,13 +16,37 @@ function StatCard({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-export default async function DashboardPage() {
-  const [departments, trainees, schedules, attendance] = await Promise.all([
-    listDepartments(),
-    listTrainees(),
-    listSchedules(),
-    listAttendance(),
-  ]);
+export default function DashboardPage() {
+  const [loading, setLoading] = useState(true);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [trainees, setTrainees] = useState<Trainee[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const [depRes, traineeRes, scheduleRes, attendanceRes] = await Promise.all([
+        fetch("/api/departments"),
+        fetch("/api/trainees"),
+        fetch("/api/schedules"),
+        fetch("/api/attendance"),
+      ]);
+      const [depData, traineeData, scheduleData, attendanceData] = await Promise.all([
+        depRes.json(),
+        traineeRes.json(),
+        scheduleRes.json(),
+        attendanceRes.json(),
+      ]);
+      setDepartments(depData.departments ?? []);
+      setTrainees(traineeData.trainees ?? []);
+      setSchedules(scheduleData.schedules ?? []);
+      setAttendance(attendanceData.attendance ?? []);
+      setLoading(false);
+    }
+     
+    load();
+  }, []);
 
   const today = todayInJakarta();
   const todaySchedules = schedules.filter((s) => s.date === today);
@@ -29,6 +56,10 @@ export default async function DashboardPage() {
     (a) => a.type === "clock_in" && todayScheduleIds.has(a.schedule_id)
   );
   const todayLate = todayClockIns.filter((a) => a.status === "late");
+
+  if (loading) {
+    return <p className="text-sm text-zinc-500">Memuat...</p>;
+  }
 
   return (
     <div className="flex flex-col gap-6">
