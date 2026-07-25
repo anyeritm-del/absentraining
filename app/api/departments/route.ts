@@ -1,25 +1,29 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminOrResponse } from "@/lib/session";
+import { requireAdminOrResponse, requireFullAccessOrResponse } from "@/lib/session";
 import { createDepartment, listDepartments } from "@/lib/repositories/departments";
 
-
 export const dynamic = "force-dynamic";
+
 const createSchema = z.object({
   name: z.string().min(1),
   description: z.string().default(""),
 });
 
 export async function GET() {
-  const { response } = await requireAdminOrResponse();
+  const { session, response } = await requireAdminOrResponse();
   if (response) return response;
 
   const departments = await listDepartments();
-  return NextResponse.json({ departments });
+  const scoped =
+    session.role === "full_access"
+      ? departments
+      : departments.filter((d) => d.id === session.departmentId);
+  return NextResponse.json({ departments: scoped });
 }
 
 export async function POST(req: Request) {
-  const { response } = await requireAdminOrResponse();
+  const { response } = await requireFullAccessOrResponse();
   if (response) return response;
 
   const parsed = createSchema.safeParse(await req.json().catch(() => null));

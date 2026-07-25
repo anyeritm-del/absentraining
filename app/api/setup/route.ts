@@ -46,7 +46,7 @@ export async function POST() {
   }
 
   const password_hash = await bcrypt.hash(password, 10);
-  await createAdmin({ email, password_hash });
+  await createAdmin({ email, password_hash, role: "full_access", department_id: "" });
 
   return NextResponse.json({
     message: `Setup complete. Sheet tabs created and admin ${email} seeded.`,

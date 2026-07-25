@@ -7,5 +7,10 @@ export async function GET() {
   const { session, response } = await requireAdminOrResponse();
   if (response) return response;
 
-  return NextResponse.json({ adminId: session.adminId, email: session.email });
+  return NextResponse.json({
+    adminId: session.adminId,
+    email: session.email,
+    role: session.role,
+    departmentId: session.departmentId,
+  });
 }

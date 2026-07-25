@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminOrResponse } from "@/lib/session";
+import { requireFullAccessOrResponse } from "@/lib/session";
 import { deleteDepartment, updateDepartment } from "@/lib/repositories/departments";
 
 
@@ -14,7 +14,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { response } = await requireAdminOrResponse();
+  const { response } = await requireFullAccessOrResponse();
   if (response) return response;
 
   const { id } = await params;
@@ -34,7 +34,7 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { response } = await requireAdminOrResponse();
+  const { response } = await requireFullAccessOrResponse();
   if (response) return response;
 
   const { id } = await params;

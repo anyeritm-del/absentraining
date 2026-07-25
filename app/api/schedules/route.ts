@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminOrResponse } from "@/lib/session";
+import { assertDepartmentScope, requireAdminOrResponse } from "@/lib/session";
 import { createSchedule, listSchedules } from "@/lib/repositories/schedules";
 
-
 export const dynamic = "force-dynamic";
+
 const scheduleSchema = z.object({
   department_id: z.string().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal harus YYYY-MM-DD"),
@@ -17,15 +17,19 @@ const scheduleSchema = z.object({
 });
 
 export async function GET() {
-  const { response } = await requireAdminOrResponse();
+  const { session, response } = await requireAdminOrResponse();
   if (response) return response;
 
   const schedules = await listSchedules();
-  return NextResponse.json({ schedules });
+  const scoped =
+    session.role === "full_access"
+      ? schedules
+      : schedules.filter((s) => s.department_id === session.departmentId);
+  return NextResponse.json({ schedules: scoped });
 }
 
 export async function POST(req: Request) {
-  const { response } = await requireAdminOrResponse();
+  const { session, response } = await requireAdminOrResponse();
   if (response) return response;
 
   const parsed = scheduleSchema.safeParse(await req.json().catch(() => null));
@@ -35,6 +39,10 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+
+  const forbidden = assertDepartmentScope(session, parsed.data.department_id);
+  if (forbidden) return forbidden;
+
   const schedule = await createSchedule(parsed.data);
   return NextResponse.json({ schedule }, { status: 201 });
 }

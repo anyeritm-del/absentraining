@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminOrResponse } from "@/lib/session";
+import { assertDepartmentScope, requireAdminOrResponse } from "@/lib/session";
 import { createTrainee, listTrainees } from "@/lib/repositories/trainees";
 
-
 export const dynamic = "force-dynamic";
+
 const createSchema = z.object({
   name: z.string().min(1),
   department_id: z.string().min(1),
@@ -13,15 +13,19 @@ const createSchema = z.object({
 });
 
 export async function GET() {
-  const { response } = await requireAdminOrResponse();
+  const { session, response } = await requireAdminOrResponse();
   if (response) return response;
 
   const trainees = await listTrainees();
-  return NextResponse.json({ trainees });
+  const scoped =
+    session.role === "full_access"
+      ? trainees
+      : trainees.filter((t) => t.department_id === session.departmentId);
+  return NextResponse.json({ trainees: scoped });
 }
 
 export async function POST(req: Request) {
-  const { response } = await requireAdminOrResponse();
+  const { session, response } = await requireAdminOrResponse();
   if (response) return response;
 
   const parsed = createSchema.safeParse(await req.json().catch(() => null));
@@ -31,6 +35,10 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+
+  const forbidden = assertDepartmentScope(session, parsed.data.department_id);
+  if (forbidden) return forbidden;
+
   const trainee = await createTrainee(parsed.data);
   return NextResponse.json({ trainee }, { status: 201 });
 }

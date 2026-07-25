@@ -18,12 +18,18 @@ const LATE_GRACE_MINUTES = 15;
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 export async function GET(req: Request) {
-  const { response } = await requireAdminOrResponse();
+  const { session, response } = await requireAdminOrResponse();
   if (response) return response;
 
   const url = new URL(req.url);
+  const requestedDepartmentId = url.searchParams.get("department_id");
+  // department_admin can only ever see their own department, regardless of
+  // what the query string asks for.
+  const departmentId =
+    session.role === "full_access" ? requestedDepartmentId : session.departmentId;
+
   const attendance = await getJoinedAttendance({
-    departmentId: url.searchParams.get("department_id"),
+    departmentId,
     date: url.searchParams.get("date"),
     traineeId: url.searchParams.get("trainee_id"),
   });

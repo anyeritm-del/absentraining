@@ -1,11 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import type { AdminRole } from "@/lib/repositories/admins";
+import type { Department } from "@/lib/repositories/departments";
 
 interface AdminRow {
   id: string;
   email: string;
   created_at: string;
+  role: AdminRole;
+  department_id: string;
 }
 
 function formatDate(iso: string): string {
@@ -18,22 +22,34 @@ function formatDate(iso: string): string {
 
 export default function AdminsClient() {
   const [admins, setAdmins] = useState<AdminRow[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
   const [loadingList, setLoadingList] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<AdminRole>("full_access");
+  const [departmentId, setDepartmentId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const departmentName = (id: string) =>
+    departments.find((d) => d.id === id)?.name ?? "-";
+
   const fetchData = useCallback(async () => {
     setLoadingList(true);
-    const [meRes, adminsRes] = await Promise.all([
+    const [meRes, adminsRes, deptRes] = await Promise.all([
       fetch("/api/auth/me"),
       fetch("/api/admins"),
+      fetch("/api/departments"),
     ]);
-    const [meData, adminsData] = await Promise.all([meRes.json(), adminsRes.json()]);
+    const [meData, adminsData, deptData] = await Promise.all([
+      meRes.json(),
+      adminsRes.json(),
+      deptRes.json(),
+    ]);
     if (meRes.ok) setCurrentAdminId(meData.adminId);
     if (adminsRes.ok) setAdmins(adminsData.admins);
+    if (deptRes.ok) setDepartments(deptData.departments);
     setLoadingList(false);
   }, []);
 
@@ -42,23 +58,33 @@ export default function AdminsClient() {
     fetchData();
   }, [fetchData]);
 
+  function resetForm() {
+    setEmail("");
+    setPassword("");
+    setRole("full_access");
+    setDepartmentId("");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (role === "department_admin" && !departmentId) {
+      setError("Pilih department untuk admin department");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/admins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role, department_id: departmentId }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Gagal menambahkan admin");
         return;
       }
-      setEmail("");
-      setPassword("");
+      resetForm();
       await fetchData();
     } catch {
       setError("Terjadi kesalahan jaringan");
@@ -82,9 +108,9 @@ export default function AdminsClient() {
     <div className="flex flex-col gap-6">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-end"
+        className="grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900 sm:grid-cols-2 lg:grid-cols-5"
       >
-        <div className="flex-1">
+        <div>
           <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Email
           </label>
@@ -96,7 +122,7 @@ export default function AdminsClient() {
             className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
           />
         </div>
-        <div className="flex-1">
+        <div>
           <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Password
           </label>
@@ -109,13 +135,47 @@ export default function AdminsClient() {
             className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
           />
         </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
-        >
-          Tambah Admin
-        </button>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Role
+          </label>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as AdminRole)}
+            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
+          >
+            <option value="full_access">Full Access</option>
+            <option value="department_admin">Admin Department</option>
+          </select>
+        </div>
+        {role === "department_admin" && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Department
+            </label>
+            <select
+              value={departmentId}
+              onChange={(e) => setDepartmentId(e.target.value)}
+              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
+            >
+              <option value="">Pilih...</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className="flex items-end">
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
+          >
+            Tambah Admin
+          </button>
+        </div>
       </form>
 
       {error && (
@@ -129,6 +189,8 @@ export default function AdminsClient() {
           <thead>
             <tr className="border-b border-zinc-200 text-left text-zinc-500 dark:border-zinc-800">
               <th className="px-4 py-3 font-medium">Email</th>
+              <th className="px-4 py-3 font-medium">Role</th>
+              <th className="px-4 py-3 font-medium">Department</th>
               <th className="px-4 py-3 font-medium">Dibuat</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
@@ -143,6 +205,20 @@ export default function AdminsClient() {
                       Anda
                     </span>
                   )}
+                </td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs ${
+                      admin.role === "full_access"
+                        ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
+                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                    }`}
+                  >
+                    {admin.role === "full_access" ? "Full Access" : "Admin Department"}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-zinc-500">
+                  {admin.role === "department_admin" ? departmentName(admin.department_id) : "-"}
                 </td>
                 <td className="px-4 py-3 text-zinc-500">{formatDate(admin.created_at)}</td>
                 <td className="px-4 py-3 text-right">
@@ -159,14 +235,14 @@ export default function AdminsClient() {
             ))}
             {!loadingList && admins.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
                   Belum ada admin.
                 </td>
               </tr>
             )}
             {loadingList && (
               <tr>
-                <td colSpan={3} className="px-4 py-6 text-center text-zinc-400">
+                <td colSpan={5} className="px-4 py-6 text-center text-zinc-400">
                   Memuat...
                 </td>
               </tr>

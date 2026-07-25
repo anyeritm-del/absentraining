@@ -66,7 +66,12 @@ async function ensureTabExists(tab: string) {
   }
 }
 
-/** Creates the tab (if missing) and its header row (if missing). */
+/**
+ * Creates the tab (if missing) and its header row (if missing). If the tab
+ * already has headers but is missing some of the requested columns (e.g.
+ * after adding a new field to a repository), the missing ones are appended
+ * after the existing columns — existing columns and data keep their position.
+ */
 export async function ensureHeaders(tab: string, headers: string[]) {
   await ensureTabExists(tab);
   const sheets = getSheetsClient();
@@ -75,13 +80,25 @@ export async function ensureHeaders(tab: string, headers: string[]) {
     spreadsheetId,
     range: `${tab}!1:1`,
   });
-  const existing = res.data.values?.[0];
-  if (!existing || existing.length === 0) {
+  const existing = res.data.values?.[0] ?? [];
+  if (existing.length === 0) {
     await sheets.spreadsheets.values.update({
       spreadsheetId,
       range: `${tab}!A1`,
       valueInputOption: "RAW",
       requestBody: { values: [headers] },
+    });
+    return;
+  }
+  const missing = headers.filter((h) => !existing.includes(h));
+  if (missing.length > 0) {
+    const startCol = existing.length + 1;
+    const endCol = existing.length + missing.length;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${tab}!${columnLetter(startCol)}1:${columnLetter(endCol)}1`,
+      valueInputOption: "RAW",
+      requestBody: { values: [missing] },
     });
   }
 }

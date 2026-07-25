@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import QRCode from "qrcode";
-import { requireAdminOrResponse } from "@/lib/session";
+import { assertDepartmentScope, requireAdminOrResponse } from "@/lib/session";
 import { getTraineeById } from "@/lib/repositories/trainees";
 import { getDepartmentById } from "@/lib/repositories/departments";
 
@@ -10,7 +10,7 @@ export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { response } = await requireAdminOrResponse();
+  const { session, response } = await requireAdminOrResponse();
   if (response) return response;
 
   const { id } = await params;
@@ -18,6 +18,9 @@ export async function GET(
   if (!trainee) {
     return NextResponse.json({ error: "Trainee tidak ditemukan" }, { status: 404 });
   }
+  const forbidden = assertDepartmentScope(session, trainee.department_id);
+  if (forbidden) return forbidden;
+
   const department = await getDepartmentById(trainee.department_id);
 
   const url = new URL(req.url);

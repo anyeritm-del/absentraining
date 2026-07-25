@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminOrResponse } from "@/lib/session";
+import { requireFullAccessOrResponse } from "@/lib/session";
 import { deleteAdmin, getAdminById, listAdmins } from "@/lib/repositories/admins";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ export async function DELETE(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { session, response } = await requireAdminOrResponse();
+  const { session, response } = await requireFullAccessOrResponse();
   if (response) return response;
 
   const { id } = await params;

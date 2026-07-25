@@ -28,7 +28,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email atau password salah" }, { status: 401 });
   }
 
-  const token = await signAdminSession({ adminId: admin.id, email: admin.email });
+  const token = await signAdminSession({
+    adminId: admin.id,
+    email: admin.email,
+    role: admin.role,
+    departmentId: admin.department_id,
+  });
   const res = NextResponse.json({ message: "Login berhasil" });
   res.cookies.set(ADMIN_COOKIE_NAME, token, {
     httpOnly: true,
